@@ -184,6 +184,23 @@ body {
   <div id="statList"></div>
   <div id="emptyState" class="empty" hidden>Belum ada klik. Share link halaman utama dulu! 🚀</div>
 
+  <!-- Hourly Graph Section -->
+  <div id="hourlySection" class="section" style="margin-top: 20px;">
+    <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      📈 Klik Per Jam (24 Jam Terakhir)
+    </h3>
+    <div id="hourlyChart" style="display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 10px 0; background: rgba(255,255,255,.04); border-radius: 12px; border: 1px solid rgba(255,255,255,.08);"></div>
+    <p style="font-size: .7rem; color: var(--dim); margin-top: 6px; text-align: center;">Grafik menampilkan jumlah klik per jam dalam 24 jam terakhir</p>
+  </div>
+
+  <!-- Device Stats Section -->
+  <div id="deviceSection" class="section" style="margin-top: 20px;">
+    <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      📱 Statistik Device
+    </h3>
+    <div id="deviceStats" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;"></div>
+  </div>
+
   <div class="actions">
     <button id="refreshBtn">🔄 Refresh</button>
     <button id="shareBtn" class="share">📲 Share</button>
@@ -208,7 +225,17 @@ const gate = $('#gate'), dash = $('#dash'), list = $('#statList');
 let prevTotal = null, prevCounts = {};
 
 function getToken() {
-  try { return sessionStorage.getItem('jpx_dash_token') || ''; } catch { return ''; }
+  try {
+    const raw = sessionStorage.getItem('jpx_dash_token');
+    if (!raw) return '';
+    const data = JSON.parse(raw);
+    // Token expires after 1 hour
+    if (Date.now() - data.ts > 3600000) {
+      sessionStorage.removeItem('jpx_dash_token');
+      return '';
+    }
+    return data.token || '';
+  } catch { return ''; }
 }
 
 /* ---- LOGIN: verifikasi token via /api/stats (server) ---- */
@@ -221,12 +248,14 @@ async function tryLogin() {
   try {
     const r = await fetch(API + '/api/stats', { headers: { 'Authorization': 'Bearer ' + token } });
     if (r.ok) {
-      try { sessionStorage.setItem('jpx_dash_token', token); } catch {}
+      try { sessionStorage.setItem('jpx_dash_token', JSON.stringify({ token, ts: Date.now() })); } catch {}
       gate.hidden = true; dash.hidden = false;
       load(true);
       setInterval(() => load(false), 10000);
     } else if (r.status === 401) {
       showGateError('Token salah. Coba lagi.');
+    } else if (r.status === 429) {
+      showGateError('Terlalu banyak percobaan. Tunggu 1 menit lalu coba lagi.');
     } else {
       showGateError('Server error (' + r.status + '). Coba lagi nanti.');
     }
@@ -264,9 +293,13 @@ async function load(animate) {
       dash.hidden = true; gate.hidden = false;
       return;
     }
+    if (r.status === 429) { // rate limit → tampilkan pesan
+      if (!list.innerHTML) list.innerHTML = '<div class="empty">Terlalu banyak permintaan. Tunggu sebentar lalu tekan Refresh.</div>';
+      return;
+    }
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    render(d.counts || {}, d.total || 0, animate);
+    render(d.counts || {}, d.total || 0, animate, d.hourlyStats || {}, d.deviceStats || {});
   } catch {
     if (!list.innerHTML) list.innerHTML = '<div class="empty">Gagal memuat data. Periksa koneksi & tekan Refresh.</div>';
   }
@@ -288,7 +321,7 @@ function emojiFor(url) {
   return '🔗';
 }
 
-function render(counts, total, animate) {
+function render(counts, total, animate, hourlyStats = {}, deviceStats = {}) {
   prevCounts = counts;
   if (animate || prevTotal === null) {
     const from = prevTotal || 0, dur = 900, t0 = performance.now();
@@ -320,6 +353,74 @@ function render(counts, total, animate) {
       <span class="count">${n.toLocaleString()}</span>
     </div>`;
   }).join('');
+
+  // Render hourly graph
+  renderHourlyGraph(hourlyStats);
+  
+  // Render device stats
+  renderDeviceStats(deviceStats);
+}
+
+function renderHourlyGraph(hourlyStats) {
+  const chart = $('#hourlyChart');
+  if (!chart) return;
+  
+  // Create 24 hour labels (current hour - 23 to current hour)
+  const now = new Date();
+  const currentHour = now.getHours();
+  const hours = [];
+  
+  for (let i = 23; i >= 0; i--) {
+    const hour = (currentHour - i + 24) % 24;
+    hours.push(hour);
+  }
+  
+  // Get max value for scaling
+  const values = hours.map(h => hourlyStats[h] || 0);
+  const maxVal = Math.max(...values, 1);
+  
+  // Render bars
+  chart.innerHTML = hours.map((hour, i) => {
+    const value = values[i];
+    const height = Math.max(4, (value / maxVal) * 100);
+    const isNow = hour === currentHour;
+    const barColor = isNow ? 'var(--violet)' : 'var(--grad)';
+    
+    return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+      <div style="font-size: .6rem; color: var(--dim); min-height: 14px;">${value > 0 ? value : ''}</div>
+      <div style="width: 100%; height: ${height}px; background: ${barColor}; border-radius: 4px 4px 0 0; transition: height .5s ease; ${isNow ? 'box-shadow: 0 0 8px rgba(139,92,246,.5);' : ''}"></div>
+      <div style="font-size: .55rem; color: ${isNow ? 'var(--violet)' : 'var(--dim)'}; font-weight: ${isNow ? '700' : '400'};">${String(hour).padStart(2, '0')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDeviceStats(deviceStats) {
+  const container = $('#deviceStats');
+  if (!container) return;
+  
+  const devices = [
+    { key: 'mobile', label: '📱 Mobile', color: 'var(--violet)' },
+    { key: 'desktop', label: '🖥️ Desktop', color: 'var(--cyan)' },
+    { key: 'tablet', label: '📋 Tablet', color: 'var(--fuchsia)' },
+    { key: 'unknown', label: '❓ Unknown', color: 'var(--dim)' }
+  ];
+  
+  const total = Object.values(deviceStats).reduce((a, b) => a + b, 0) || 1;
+  
+  container.innerHTML = devices.map(({ key, label, color }) => {
+    const count = deviceStats[key] || 0;
+    const pct = Math.round((count / total) * 100);
+    
+    return `<div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 14px; text-align: center;">
+      <div style="font-size: 1.5rem; margin-bottom: 6px;">${label.split(' ')[0]}</div>
+      <div style="font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; color: ${color};">${count.toLocaleString()}</div>
+      <div style="font-size: .7rem; color: var(--dim); margin-top: 4px;">${label.split(' ').slice(1).join(' ')}</div>
+      <div style="margin-top: 8px; height: 6px; background: rgba(255,255,255,.07); border-radius: 999px; overflow: hidden;">
+        <div style="height: 100%; width: ${pct}%; background: ${color}; border-radius: 999px; transition: width .5s ease;"></div>
+      </div>
+      <div style="font-size: .65rem; color: var(--dim); margin-top: 4px;">${pct}%</div>
+    </div>`;
+  }).join('');
 }
 
 function escapeHtml(s) {
@@ -336,6 +437,7 @@ $('#resetBtn').addEventListener('click', async () => {
     const r = await fetch(API + '/api/stats', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
     if (r.ok) { load(true); alert('Semua hitungan berhasil di-reset.'); }
     else if (r.status === 401) { showGateError('Token tidak valid — login ulang.'); dash.hidden = true; gate.hidden = false; }
+    else if (r.status === 429) { alert('Terlalu banyak permintaan. Tunggu 1 menit lalu coba lagi.'); }
     else alert('Gagal reset (status ' + r.status + ').');
   } catch { alert('Gagal reset — periksa koneksi.'); }
 });

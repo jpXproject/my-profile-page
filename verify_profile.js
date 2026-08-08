@@ -71,7 +71,7 @@ const fs = require('fs');
     badgesShown: document.querySelectorAll('.lb-count.show').length,
     featuredNum: document.querySelector('.link-btn.featured .lb-count-num').textContent,
     total: document.getElementById('totalClicks').textContent,
-    stored: JSON.parse(localStorage.getItem('jpx_link_clicks_v1') || '{}'),
+    stored: JSON.parse(localStorage.getItem('jpx_link_clicks_local_v2') || '{}'),
   }));
 
   // reload → hitungan harus tetap (persisten)
@@ -89,7 +89,7 @@ const fs = require('fs');
   const afterReset = await page.evaluate(() => ({
     badgesShown: document.querySelectorAll('.lb-count.show').length,
     total: document.getElementById('totalClicks').textContent,
-    stored: localStorage.getItem('jpx_link_clicks_v1'),
+    stored: localStorage.getItem('jpx_link_clicks_local_v2'),
   }));
 
   console.log('badges sebelum klik:', before);
