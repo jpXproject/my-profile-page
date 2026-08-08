@@ -1,0 +1,7 @@
+name = "jpx-click-counter"
+main = "src/index.js"
+compatibility_date = "2025-12-01"
+
+kv_namespaces = [
+  { binding = "CLICKS", id = "95c1640c034744f9b9b99a259241088d" }
+]

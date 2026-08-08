@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#05050f" />
+<meta name="robots" content="noindex, nofollow" />
+<title>📊 Dashboard Klik · Jpx Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #05050f;
+  --card: rgba(20, 20, 40, .6);
+  --text: #f2f2ff;
+  --dim: #9ba3c4;
+  --violet: #8b5cf6;
+  --fuchsia: #e879f9;
+  --cyan: #22d3ee;
+  --grad: linear-gradient(135deg, #8b5cf6, #e879f9, #22d3ee);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  padding: calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+}
+
+.bg { position: fixed; inset: 0; z-index: -1; overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(139,92,246,.4), transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(34,211,238,.3), transparent 42%),
+    radial-gradient(circle at 65% 80%, rgba(232,121,249,.35), transparent 45%);
+  filter: blur(60px) saturate(1.2);
+  animation: drift 24s ease-in-out infinite alternate;
+}
+@keyframes drift { from { transform: scale(1) rotate(0deg); } to { transform: scale(1.15) rotate(10deg); } }
+
+.card {
+  max-width: 480px; margin: 0 auto;
+  background: var(--card);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 26px;
+  box-shadow: 0 24px 60px -12px rgba(0,0,0,.6);
+  padding: 24px 20px;
+  animation: in .6s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+/* ---------- LOGIN ---------- */
+#gate { text-align: center; }
+#gate .lock { font-size: 3rem; }
+#gate h1 { font-family: "Space Grotesk", sans-serif; font-size: 1.3rem; margin: 10px 0 4px; }
+#gate p { color: var(--dim); font-size: .84rem; margin-bottom: 20px; }
+#tokenInput {
+  width: 100%; padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: var(--text); font-size: .95rem; text-align: center;
+  outline: none;
+}
+#tokenInput:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(139,92,246,.25); }
+#gate button {
+  width: 100%; margin-top: 14px; padding: 14px;
+  border: none; border-radius: 14px;
+  background: var(--grad); color: #fff;
+  font-family: inherit; font-size: 1rem; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 26px -8px rgba(139,92,246,.7);
+}
+#gate button:active { transform: scale(.97); }
+#gateError { color: #f87171; font-size: .8rem; min-height: 18px; margin-top: 10px; }
+.shake { animation: shake .4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+/* ---------- DASHBOARD ---------- */
+.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.head h1 { font-family: "Space Grotesk", sans-serif; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .68rem; font-weight: 600; letter-spacing: .06em;
+  color: #4ade80;
+  background: rgba(74,222,128,.1);
+  border: 1px solid rgba(74,222,128,.3);
+  padding: 4px 10px; border-radius: 999px;
+}
+.live .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+.total {
+  text-align: center;
+  padding: 22px 0 18px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+.total b {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(2.6rem, 12vw, 3.4rem);
+  font-weight: 700;
+  background: var(--grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.total span { display: block; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--dim); margin-top: 4px; }
+
+.updated { text-align: center; font-size: .72rem; color: var(--dim); margin: -8px 0 18px; }
+
+.item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.item:last-child { border-bottom: none; }
+.item .em { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; font-size: 1.2rem; background: rgba(255,255,255,.06); border-radius: 12px; }
+.item .meta { flex: 1; min-width: 0; }
+.item .name { font-weight: 600; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .host { font-size: .7rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 6px; margin-top: 6px; background: rgba(255,255,255,.07); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--grad); transition: width .8s cubic-bezier(.22,1,.36,1); }
+.item .count { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 1.15rem; min-width: 44px; text-align: right; }
+
+.empty { text-align: center; color: var(--dim); padding: 26px 0; font-size: .88rem; }
+
+.actions { display: flex; gap: 10px; margin-top: 18px; }
+.actions button, .actions a {
+  flex: 1; text-align: center;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-family: inherit; font-size: .86rem; font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .15s, background .2s;
+}
+.actions button:active, .actions a:active { transform: scale(.96); }
+.actions button:hover, .actions a:hover { background: rgba(255,255,255,.12); }
+.actions .share { background: linear-gradient(135deg, #25d366, #128c7e); border: none; color: #fff; }
+.actions .danger { border-color: rgba(248,113,113,.4); color: #fca5a5; }
+.actions .danger:hover { background: rgba(248,113,113,.12); }
+
+.foot { margin-top: 16px; text-align: center; }
+.foot a { color: var(--dim); font-size: .76rem; text-decoration: underline; }
+.foot .logout { color: rgba(248,113,113,.8); margin-left: 12px; background: none; border: none; font-family: inherit; font-size: .76rem; text-decoration: underline; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; } }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"></div>
+
+<!-- ============ LOGIN (token rahasia) ============ -->
+<main class="card" id="gate">
+  <div class="lock">🔐</div>
+  <h1>Dashboard Klik</h1>
+  <p>Masukkan token rahasia untuk melihat statistik</p>
+  <input id="tokenInput" type="password" placeholder="Token rahasia…" autocomplete="off" />
+  <button id="unlockBtn">Buka Dashboard</button>
+  <p id="gateError"></p>
+</main>
+
+<!-- ============ DASHBOARD ============ -->
+<main class="card" id="dash" hidden>
+  <div class="head">
+    <h1>📊 Dashboard Klik</h1>
+    <span class="live"><span class="dot"></span> LIVE</span>
+  </div>
+
+  <div class="total">
+    <b id="totalNum">0</b>
+    <span>Total Klik Global</span>
+  </div>
+  <p class="updated">Terakhir diperbarui: <span id="updatedAt">—</span> · auto-refresh 10 dtk</p>
+
+  <div id="statList"></div>
+  <div id="emptyState" class="empty" hidden>Belum ada klik. Share link halaman utama dulu! 🚀</div>
+
+  <div class="actions">
+    <button id="refreshBtn">🔄 Refresh</button>
+    <button id="shareBtn" class="share">📲 Share</button>
+    <button id="resetBtn" class="danger">🗑️ Reset</button>
+  </div>
+
+  <div class="foot">
+    <a href="https://jpxcode.pages.dev/">← Kembali ke halaman utama</a>
+    <button id="logoutBtn" class="logout">keluar</button>
+  </div>
+</main>
+
+<script>
+/* ============================================================
+   KONFIGURASI
+   ============================================================ */
+const API = "https://jpx-click-counter.panx-je.workers.dev";
+
+/* ============================================================ */
+const $ = (s) => document.querySelector(s);
+const gate = $('#gate'), dash = $('#dash'), list = $('#statList');
+let prevTotal = null, prevCounts = {};
+
+function getToken() {
+  try { return sessionStorage.getItem('jpx_dash_token') || ''; } catch { return ''; }
+}
+
+/* ---- LOGIN: verifikasi token via /api/stats (server) ---- */
+async function tryLogin() {
+  const token = $('#tokenInput').value.trim();
+  if (!token) { showGateError('Token tidak boleh kosong.'); return; }
+
+  const btn = $('#unlockBtn');
+  btn.disabled = true; btn.textContent = 'Memverifikasi…';
+  try {
+    const r = await fetch(API + '/api/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) {
+      try { sessionStorage.setItem('jpx_dash_token', token); } catch {}
+      gate.hidden = true; dash.hidden = false;
+      load(true);
+      setInterval(() => load(false), 10000);
+    } else if (r.status === 401) {
+      showGateError('Token salah. Coba lagi.');
+    } else {
+      showGateError('Server error (' + r.status + '). Coba lagi nanti.');
+    }
+  } catch {
+    showGateError('Gagal terhubung ke server.');
+  }
+  btn.disabled = false; btn.textContent = 'Buka Dashboard';
+}
+function showGateError(msg) {
+  $('#gateError').textContent = msg;
+  gate.classList.remove('shake'); void gate.offsetWidth; gate.classList.add('shake');
+  $('#tokenInput').value = '';
+}
+$('#unlockBtn').addEventListener('click', tryLogin);
+$('#tokenInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+$('#logoutBtn').addEventListener('click', () => {
+  try { sessionStorage.removeItem('jpx_dash_token'); } catch {}
+  dash.hidden = true; gate.hidden = false;
+});
+
+// sudah login di sesi ini?
+if (getToken()) {
+  gate.hidden = true; dash.hidden = false;
+  load(true);
+  setInterval(() => load(false), 10000);
+}
+
+/* ---- Load data (butuh token) ---- */
+async function load(animate) {
+  const token = getToken();
+  try {
+    const r = await fetch(API + '/api/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) { // token tidak valid lagi → minta login ulang
+      try { sessionStorage.removeItem('jpx_dash_token'); } catch {}
+      dash.hidden = true; gate.hidden = false;
+      return;
+    }
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    render(d.counts || {}, d.total || 0, animate);
+  } catch {
+    if (!list.innerHTML) list.innerHTML = '<div class="empty">Gagal memuat data. Periksa koneksi & tekan Refresh.</div>';
+  }
+}
+
+function hostLabel(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+}
+function emojiFor(url) {
+  const h = hostLabel(url);
+  if (h.includes('freebuff')) return '🚀';
+  if (h.includes('github')) return '🐙';
+  if (h.includes('threads')) return '🧵';
+  if (h.includes('tiktok')) return '🎵';
+  if (h.includes('instagram')) return '📸';
+  if (h.includes('whatsapp') || h.includes('wa.me')) return '💬';
+  if (h.includes('youtube')) return '▶️';
+  if (h.includes('x.com') || h.includes('twitter')) return '🐦';
+  return '🔗';
+}
+
+function render(counts, total, animate) {
+  prevCounts = counts;
+  if (animate || prevTotal === null) {
+    const from = prevTotal || 0, dur = 900, t0 = performance.now();
+    (function tick(now) {
+      const k = Math.min((now - t0) / dur, 1);
+      $('#totalNum').textContent = Math.round(from + (total - from) * (1 - Math.pow(1 - k, 3))).toLocaleString();
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
+  } else {
+    $('#totalNum').textContent = total.toLocaleString();
+  }
+  prevTotal = total;
+
+  $('#updatedAt').textContent = new Date().toLocaleTimeString('id-ID');
+
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  $('#emptyState').hidden = entries.length > 0;
+
+  list.innerHTML = entries.map(([url, n]) => {
+    const max = entries.length ? Math.max(...entries.map(e => e[1])) : 1;
+    const pct = Math.max(4, Math.round((n / max) * 100));
+    return `<div class="item">
+      <span class="em">${emojiFor(url)}</span>
+      <div class="meta">
+        <div class="name">${escapeHtml(hostLabel(url))}</div>
+        <div class="host">${escapeHtml(url)}</div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+      </div>
+      <span class="count">${n.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+$('#refreshBtn').addEventListener('click', () => load(true));
+
+/* ---- Reset semua (server) ---- */
+$('#resetBtn').addEventListener('click', async () => {
+  if (!confirm('Reset SEMUA hitungan klik ke 0?\n\nTindakan ini tidak bisa dibatalkan.')) return;
+  const token = getToken();
+  try {
+    const r = await fetch(API + '/api/stats', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) { load(true); alert('Semua hitungan berhasil di-reset.'); }
+    else if (r.status === 401) { showGateError('Token tidak valid — login ulang.'); dash.hidden = true; gate.hidden = false; }
+    else alert('Gagal reset (status ' + r.status + ').');
+  } catch { alert('Gagal reset — periksa koneksi.'); }
+});
+
+/* ---- Share WhatsApp ---- */
+$('#shareBtn').addEventListener('click', () => {
+  const entries = Object.entries(prevCounts).sort((a, b) => b[1] - a[1]);
+  let msg = '📊 *Statistik Klik Jpx Project*\n\nTotal: ' + (prevTotal || 0) + ' klik';
+  entries.slice(0, 10).forEach(([url, n]) => { msg += `\n• ${hostLabel(url)}: ${n}`; });
+  msg += '\n\nhttps://jpxcode.pages.dev';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+});
+</script>
+</body>
+</html>
