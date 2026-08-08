@@ -7,7 +7,14 @@
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare_Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-jpxcode.pages.dev-22d3ee?style=for-the-badge&logo=cloudflare)](https://jpxcode.pages.dev/)
 [![Mobile First](https://img.shields.io/badge/Design-Mobile_First-8b5cf6?style=for-the-badge)](#-desain-mobile-first-ultra-responsif)
+
+<br />
+
+> 🚀 **Demo Langsung (Live Website)**: [**https://jpxcode.pages.dev/**](https://jpxcode.pages.dev/)
+> 
+> *Buka di smartphone Anda untuk merasakan kehalusan animasi dan respon UI-nya secara langsung!*
 
 <br />
 
