@@ -31,7 +31,101 @@ const CORS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
+
+/* Host yang boleh menerima redirect balik setelah login (cegah open-redirect / token leak) */
+const REDIRECT_HOST_ALLOWLIST = [
+  'jpx-admin.pages.dev',
+  'jpx-dashboard-ay5.pages.dev',
+  'jpxcode.pages.dev',
+  'localhost',
+  '127.0.0.1',
+];
+
+function safeRedirectUri(raw, fallbackOrigin) {
+  if (raw) {
+    try {
+      const u = new URL(raw);
+      const host = u.hostname.toLowerCase();
+      if (host === new URL(fallbackOrigin).hostname) return u.toString();
+      if (REDIRECT_HOST_ALLOWLIST.includes(host)) return u.toString();
+    } catch { /* invalid → pakai default */ }
+  }
+  return fallbackOrigin + '/admin.html';
+}
+
+/* Sanitasi key klik: buang karakter HTML & kontrol */
+function sanitizeKey(raw) {
+  if (typeof raw !== 'string') return 'unknown';
+  const cleaned = raw
+    .replace(/[<>"']/g, '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim();
+  return cleaned ? cleaned.slice(0, 200) : 'unknown';
+}
+
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/* Buang tag HTML dari teks + batasi panjang */
+function cleanText(v, max = 300) {
+  if (typeof v !== 'string') return '';
+  return v.replace(/[<>]/g, '').trim().slice(0, max);
+}
+
+function cleanUrl(v, max = 500) {
+  if (typeof v !== 'string') return '';
+  const u = v.trim().slice(0, max);
+  return /^(https?:\/\/|mailto:|tel:)/i.test(u) ? u : '';
+}
+
+/* Validasi + sanitasi struktur config sebelum disimpan */
+function sanitizeConfig(raw) {
+  if (!isPlainObject(raw)) throw new Error('config_must_be_object');
+  const str = (v, max) => cleanText(v, max);
+  const cfg = {
+    name: str(raw.name, 120) || 'Jpx Project',
+    role: str(raw.role, 120),
+    bio: str(raw.bio, 500),
+    taglines: Array.isArray(raw.taglines) ? raw.taglines.slice(0, 10).map(t => str(t, 200)).filter(Boolean) : [],
+    photoAvatar: Array.isArray(raw.photoAvatar) ? raw.photoAvatar.slice(0, 10).map(t => str(t, 200)).filter(Boolean) : [],
+    photoBg: Array.isArray(raw.photoBg) ? raw.photoBg.slice(0, 10).map(t => str(t, 200)).filter(Boolean) : [],
+    prompt: str(raw.prompt, 120),
+    windowTitle: str(raw.windowTitle, 80),
+    footText: str(raw.footText, 200),
+    siteUrl: cleanUrl(raw.siteUrl, 200),
+    colors: isPlainObject(raw.colors)
+      ? Object.fromEntries(Object.entries(raw.colors).slice(0, 12).map(([k, v]) => [String(k).slice(0, 30), cleanText(v, 30)]))
+      : {},
+    links: Array.isArray(raw.links) ? raw.links.slice(0, 25).map(l => ({
+      title: str(l.title, 100),
+      sub: str(l.sub, 200),
+      url: cleanUrl(l.url, 500),
+      icon: str(l.icon, 12),
+      featured: !!l.featured,
+      badge: str(l.badge, 60),
+    })) : [],
+    socials: Array.isArray(raw.socials) ? raw.socials.slice(0, 32).map(s => ({
+      icon: str(s.icon, 20),
+      label: str(s.label, 40),
+      url: cleanUrl(s.url, 500),
+    })) : [],
+    terminal: Array.isArray(raw.terminal) ? raw.terminal.slice(0, 60).map(t => ({
+      type: t.type === 'output' || t.type === 'prompt' || t.type === 'empty' ? t.type : 'output',
+      text: str(t.text, 200),
+      delay: Math.min(Math.max(Number(t.delay) || 300, 0), 10000),
+      isFinal: !!t.isFinal,
+    })) : [],
+  };
+  return cfg;
+}
+
+const MAX_CONFIG_BYTES = 100 * 1024; // 100 KB
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -95,25 +189,25 @@ function authorized(request, env) {
 }
 
 /* 
- * Simple rate limiter using in-memory store.
- * NOTE: This is per-Worker-instance. Cloudflare Workers are stateless,
- * so this won't persist across different Worker invocations.
- * For production, consider using Cloudflare's built-in rate limiting
- * or a KV-based approach for distributed rate limiting.
+ * Rate limiter berbasis KV (persisten lintas isolate).
+ * KV eventual-consistent, jadi ada toleransi kecil — jauh lebih baik
+ * daripada store in-memory yang reset per isolate.
  */
-const rateLimitStore = {};
-
-function checkRateLimit(ip) {
+async function checkRateLimit(env, ip, limit = RATE_LIMIT_MAX, windowSec = 60) {
+  const key = 'rl_' + ip;
   const now = Date.now();
-  if (!rateLimitStore[ip]) {
-    rateLimitStore[ip] = [];
+  let entry = null;
+  try {
+    const data = await env.CLICKS.get(key);
+    if (data) entry = JSON.parse(data);
+  } catch { /* dianggap baru */ }
+  if (!entry || now - entry.reset > windowSec * 1000) {
+    await env.CLICKS.put(key, JSON.stringify({ count: 1, reset: now }), { expirationTtl: windowSec + 5 });
+    return true;
   }
-  // Remove old entries
-  rateLimitStore[ip] = rateLimitStore[ip].filter(t => now - t < RATE_LIMIT_WINDOW);
-  if (rateLimitStore[ip].length >= RATE_LIMIT_MAX) {
-    return false; // Rate limit exceeded
-  }
-  rateLimitStore[ip].push(now);
+  if (entry.count >= limit) return false;
+  entry.count += 1;
+  await env.CLICKS.put(key, JSON.stringify(entry), { expirationTtl: windowSec + 5 });
   return true;
 }
 
@@ -209,8 +303,8 @@ async function exchangeGithubCode(code, env) {
     })
   });
   
-  const data = await response.json();
-  if (!data.access_token) return null;
+  const data = await response.json().catch(() => null);
+  if (!data || !data.access_token) return null;
   
   // Get user info
   const userResponse = await fetch('https://api.github.com/user', {
@@ -220,15 +314,20 @@ async function exchangeGithubCode(code, env) {
     }
   });
   
-  return userResponse.json();
+  return userResponse.json().catch(() => null);
 }
 
-// Check if user is allowed
+// Check if user is allowed (deny-by-default)
 async function isUserAllowed(env, githubUser) {
   const allowedUsers = await getAllowedUsers(env);
-  // If no users are configured, allow anyone (first user becomes admin)
-  if (allowedUsers.length === 0) return true;
-  return allowedUsers.includes(githubUser.login);
+  if (allowedUsers.includes(githubUser.login)) return true;
+  // Login pertama pemilik (env.GITHUB_OWNER) mengunci allowlist
+  if (allowedUsers.length === 0 && env.GITHUB_OWNER && githubUser.login === env.GITHUB_OWNER) {
+    allowedUsers.push(githubUser.login);
+    await saveAllowedUsers(env, allowedUsers);
+    return true;
+  }
+  return false;
 }
 
 export default {
@@ -253,7 +352,7 @@ export default {
       let key = 'unknown';
       try {
         const body = await request.json();
-        key = String(body.url || 'unknown').slice(0, 300);
+        key = sanitizeKey(body.url || 'unknown');
       } catch { /* body tidak valid → pakai 'unknown' */ }
 
       const counts = await readCounts(env);
@@ -279,7 +378,7 @@ export default {
     // GET /api/stats — data lengkap, butuh token + rate limit
     if (request.method === 'GET' && url.pathname === '/api/stats') {
       const clientIP = getClientIP(request);
-      if (!checkRateLimit(clientIP)) {
+      if (!(await checkRateLimit(env, clientIP))) {
         return json({ error: 'rate_limit_exceeded', message: 'Terlalu banyak request. Coba lagi dalam 1 menit.' }, 429);
       }
       if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
@@ -314,7 +413,7 @@ export default {
     // DELETE /api/stats — reset semua hitungan, butuh token + rate limit
     if (request.method === 'DELETE' && url.pathname === '/api/stats') {
       const clientIP = getClientIP(request);
-      if (!checkRateLimit(clientIP)) {
+      if (!(await checkRateLimit(env, clientIP))) {
         return json({ error: 'rate_limit_exceeded', message: 'Terlalu banyak request. Coba lagi dalam 1 menit.' }, 429);
       }
       if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
@@ -333,6 +432,14 @@ export default {
 
     // PUT /api/config — update config (butuh auth via DASH_SECRET atau OAuth token)
     if (request.method === 'PUT' && url.pathname === '/api/config') {
+      const clientIP = getClientIP(request);
+      if (!(await checkRateLimit(env, clientIP, 20))) {
+        return json({ error: 'rate_limit_exceeded', message: 'Terlalu banyak request. Coba lagi dalam 1 menit.' }, 429);
+      }
+      const ctype = (request.headers.get('content-type') || '').toLowerCase();
+      if (!ctype.includes('application/json')) {
+        return json({ error: 'content_type_must_be_json' }, 415);
+      }
       // Check for OAuth token first
       const authHeader = request.headers.get('Authorization') || '';
       const token = authHeader.replace(/^Bearer\s+/i, '');
@@ -352,12 +459,21 @@ export default {
       
       if (!isAuthenticated) return json({ error: 'unauthorized' }, 401);
       
+      let raw;
       try {
-        const newConfig = await request.json();
+        raw = await request.text();
+      } catch {
+        return json({ error: 'invalid_body' }, 400);
+      }
+      if (raw.length > MAX_CONFIG_BYTES) {
+        return json({ error: 'config_too_large', message: 'Config melebihi 100 KB.' }, 413);
+      }
+      try {
+        const newConfig = sanitizeConfig(JSON.parse(raw));
         await env.CLICKS.put(CONFIG_KEY, JSON.stringify(newConfig));
         return json({ ok: true, config: newConfig });
       } catch (e) {
-        return json({ error: 'invalid_json' }, 400);
+        return json({ error: e.message === 'config_must_be_object' ? 'config_must_be_object' : 'invalid_json' }, 400);
       }
     }
 
@@ -365,8 +481,11 @@ export default {
 
     // GET /api/auth/github — redirect ke GitHub OAuth
     if (request.method === 'GET' && url.pathname === '/api/auth/github') {
+      if (!env.GITHUB_CLIENT_ID) {
+        return json({ error: 'oauth_not_configured', message: 'GITHUB_CLIENT_ID belum dipasang di worker.' }, 503);
+      }
       const state = generateToken(); // CSRF protection
-      const redirectUri = url.searchParams.get('redirect_uri') || `${url.origin}/admin.html`;
+      const redirectUri = safeRedirectUri(url.searchParams.get('redirect_uri'), url.origin);
       
       // Store state in KV for verification
       await env.CLICKS.put(`oauth_state_${state}`, JSON.stringify({
@@ -401,13 +520,17 @@ export default {
       // Clean up state
       await env.CLICKS.delete(`oauth_state_${state}`);
       
-      // Exchange code for user info
-      const githubUser = await exchangeGithubCode(code, env);
+      let githubUser = null;
+      try {
+        githubUser = await exchangeGithubCode(code, env);
+      } catch {
+        return new Response('Failed to authenticate with GitHub', { status: 502 });
+      }
       if (!githubUser || githubUser.message) {
         return new Response('Failed to authenticate with GitHub', { status: 400 });
       }
       
-      // Check if user is allowed
+      // Check if user is allowed (deny-by-default)
       const allowed = await isUserAllowed(env, githubUser);
       if (!allowed) {
         return new Response(`User ${githubUser.login} is not authorized to access admin panel.`, { status: 403 });
@@ -416,11 +539,12 @@ export default {
       // Create auth token
       const token = await createAuthToken(env, githubUser);
       
-      // Parse state data for redirect URI
-      const stateInfo = JSON.parse(stateData);
+      // Parse state data for redirect URI (re-validate host)
+      let stateInfo = {};
+      try { stateInfo = JSON.parse(stateData); } catch { /* pakai default */ }
       
-      // Redirect back to admin with token
-      const redirectUrl = new URL(stateInfo.redirectUri || `${url.origin}/admin.html`);
+      // Redirect back to admin with token (hanya host yang diizinkan)
+      const redirectUrl = new URL(safeRedirectUri(stateInfo.redirectUri || '', url.origin));
       redirectUrl.searchParams.set('token', token);
       redirectUrl.searchParams.set('user', githubUser.login);
       redirectUrl.searchParams.set('name', githubUser.name || githubUser.login);
@@ -461,7 +585,7 @@ export default {
     // POST /api/auth/password — login via password (DASH_SECRET), token 7 hari
     if (request.method === 'POST' && url.pathname === '/api/auth/password') {
       const clientIP = getClientIP(request);
-      if (!checkRateLimit(clientIP)) {
+      if (!(await checkRateLimit(env, clientIP))) {
         return json({ error: 'rate_limit_exceeded', message: 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.' }, 429);
       }
       try {
@@ -494,7 +618,9 @@ export default {
       if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
       try {
         const { username } = await request.json();
-        if (!username) return json({ error: 'Username required' }, 400);
+        if (typeof username !== 'string' || !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})$/.test(username)) {
+          return json({ error: 'invalid_username' }, 400);
+        }
         
         const users = await getAllowedUsers(env);
         if (!users.includes(username)) {
@@ -512,7 +638,9 @@ export default {
       if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
       try {
         const { username } = await request.json();
-        if (!username) return json({ error: 'Username required' }, 400);
+        if (typeof username !== 'string' || !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})$/.test(username)) {
+          return json({ error: 'invalid_username' }, 400);
+        }
         
         let users = await getAllowedUsers(env);
         users = users.filter(u => u !== username);

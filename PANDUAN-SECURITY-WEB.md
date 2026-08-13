@@ -794,8 +794,59 @@ Sama dengan website:
 
 ---
 
+## 11. HASIL AUDIT KEAMANAN — 13 Agustus 2026
+
+> Audit menyeluruh dilakukan oleh Buffy (Freebuff AI) pada stack: Cloudflare Pages (jpxcode, jpx-admin, jpx-dashboard) + Worker `jpx-click-counter` + KV.
+
+### 🔴 Temuan Kritis (sudah diperbaiki)
+
+| # | Temuan | Risiko | Perbaikan |
+|---|--------|--------|-----------|
+| 1 | **OAuth open-redirect → token bocor** — `redirect_uri` di `/api/auth/github` diterima apa adanya; setelah login, token dikirim ke URL itu | Attacker bisa curi token admin via link jebakan | Whitelist host redirect (`jpx-admin.pages.dev`, `jpx-dashboard-ay5.pages.dev`, `jpxcode.pages.dev`, `localhost`) + validasi ulang di callback |
+| 2 | **Allow-anyone saat allowlist kosong** — siapa pun pengguna GitHub bisa login jadi admin kalau `ALLOWED_USERS` belum diisi | Takeover admin panel | **Deny-by-default**: hanya `env.GITHUB_OWNER` yang bisa login pertama & mengunci allowlist; user lain → 403 |
+
+### 🟠 Temuan Tinggi (sudah diperbaiki)
+
+| # | Temuan | Perbaikan |
+|---|--------|-----------|
+| 3 | `/api/click` menerima key HTML (`<img onerror=...>`) → tersimpan & dirender dashboard | `sanitizeKey()`: buang karakter HTML/kontrol, batasi 200 karakter |
+| 4 | `PUT /api/config` tanpa batas: tanpa rate limit, tanpa batas ukuran, tanpa validasi | Rate limit 20/menit/IP (KV), `Content-Type` wajib JSON → 415, body > 100 KB → 413, `sanitizeConfig()` validasi struktur + buang HTML + clamp panjang + URL hanya http/https/mailto/tel |
+| 5 | Rate limiter in-memory (per-isolate, mudah di-bypass) | **Rate limiter berbasis KV** (persisten lintas isolate) untuk password, stats, config PUT |
+| 6 | XSS class di `dist/index.html` — tagline, judul/sub/badge link dari config di-render via innerHTML tanpa escape; URL bisa `javascript:` | `esc()` untuk semua teks config + `safeUrl()` (hanya http/https) untuk href |
+
+### 🟡 Temuan Rendah (sudah diperbaiki)
+
+- Username `/api/auth/users` tidak divalidasi → wajib regex GitHub (`^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$`) → 400
+- Avatar admin di-render tanpa escape → di-escape atribut
+- Belum ada security headers → ditambahkan ke semua respons worker: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Strict-Transport-Security`
+- Halaman Pages belum punya headers → file `_headers` di 3 proyek (CSP + X-Frame-Options DENY untuk admin/dashboard)
+- `exchangeGithubCode` bisa throw (network error) → di-wrapper jadi 502 generik
+
+### ✅ Yang Sudah Aman Sebelumnya
+
+- Secret hanya di `wrangler secret` (`DASH_SECRET`, `GITHUB_CLIENT_ID/SECRET`) — tidak pernah di kode klien
+- KV hanya bisa diakses worker (tidak ada API publik)
+- Perbandingan token/password pakai timing-safe (`safeEqual`)
+- CSRF state di OAuth (5 menit kedaluwarsa)
+- Dashboard analytics sudah `escapeHtml` sebelum innerHTML
+- Terminal animasi & prompt pakai `textContent` (aman)
+
+### 📋 Hasil Verifikasi (22 test worker + 14 test XSS browser)
+
+Semua lolos: security headers, preflight PUT, sanitasi key klik, batas config, open-redirect diblokir, deny-by-default OAuth, rate limit KV (password & PUT), validasi username, dan regresi endpoint lama. Halaman publik standalone tetap normal (5 link, counter, reset, tanpa error).
+
+### ⚠️ Batasan yang Perlu Diketahui
+
+1. **Kode klien tetap bisa dibaca** — obfuscation/anti-inspect hanya memperlambat, tidak menghentikan. Yang benar-benar dilindungi: server, data, dan akses.
+2. **KV rate limit eventual-consistent** — toleransi kecil (beberapa request lolos di burst), masih jauh lebih baik dari in-memory.
+3. **CSP pakai `'unsafe-inline'`** (karena semua JS inline) — tetap memblokir script eksternal tak dikenal, `object-src`, `base-uri`, `form-action`. Untuk CSP penuh, JS harus dipindah ke file eksternal + hash.
+4. **`frame-src https:` di admin** — preview iframe boleh memuat domain apa pun via https (kebutuhan custom siteUrl).
+5. **Cloudflare Access (Zero Trust)** & **WAF/Turnstile** belum dipasang — itu lapisan berikutnya (lihat menu di bagian 10).
+
+---
+
 **Dibuat oleh:** Buffy (Freebuff AI)  
-**Tanggal:** 8 Agustus 2026  
-**Versi:** 1.0
+**Tanggal:** 13 Agustus 2026 (audit keamanan v2)  
+**Versi:** 2.0
 
 > 💡 **Tips:** Simpan panduan ini dan referensikan saat development. Keamanan adalah proses berkelanjutan, bukan sekali set-up!

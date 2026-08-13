@@ -803,7 +803,7 @@ function showAdminPanel(){
     const n=currentUser.name||currentUser.user||'Admin';
     document.getElementById('sidebarUserName').textContent=n;
     document.getElementById('topAvatar').textContent=n.charAt(0).toUpperCase();
-    if(currentUser.avatar){document.getElementById('sidebarAvatar').innerHTML=`<img src="${currentUser.avatar}">`}
+    if(currentUser.avatar){const a=String(currentUser.avatar).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');document.getElementById('sidebarAvatar').innerHTML=`<img src="${a}">`}
   }
   loadConfig();
   loadStats();

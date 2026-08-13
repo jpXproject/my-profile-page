@@ -525,6 +525,7 @@ var ICONS = {
 (function () {
   var $ = function (s) { return document.querySelector(s); };
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function safeUrl(u) { return /^https?:\/\//i.test(String(u || '')) ? String(u) : ''; }
 
   /* --- Tagline & prompt --- */
   var tagsEl = $('#tagsEl');
@@ -536,7 +537,7 @@ var ICONS = {
     TAGS.forEach(function (t) {
       var pill = document.createElement('span');
       pill.className = 'tag';
-      pill.innerHTML = '<i>✦</i> ' + t;
+      pill.innerHTML = '<i>✦</i> ' + esc(t);
       tagsEl.appendChild(pill);
     });
     promptEl.textContent = PROMPT;
@@ -577,15 +578,15 @@ var ICONS = {
     LINKS.forEach(function (l) {
       var a = document.createElement('a');
       a.className = 'link-btn' + (l.featured ? ' featured' : '');
-      a.href = l.url;
+      a.href = safeUrl(l.url);
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       var iconHtml = '<span class="lb-icon">' + (ICONS[l.icon] || '<span class="emoji">🔗</span>') + '</span>';
       a.innerHTML =
-        (l.badge ? '<span class="lb-badge">' + l.badge + '</span>' : '') +
+        (l.badge ? '<span class="lb-badge">' + esc(l.badge) + '</span>' : '') +
         iconHtml +
-        '<span class="lb-text"><span class="lb-title">' + l.title + '</span>' +
-        (l.sub ? '<span class="lb-sub">' + l.sub + '</span>' : '') +
+        '<span class="lb-text"><span class="lb-title">' + esc(l.title) + '</span>' +
+        (l.sub ? '<span class="lb-sub">' + esc(l.sub) + '</span>' : '') +
         '</span>' +
         '<span class="lb-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>';
       var badge = document.createElement('span');
@@ -634,7 +635,7 @@ var ICONS = {
       if (s.url) {
         var a = document.createElement('a');
         a.className = 'social-btn';
-        a.href = s.url;
+        a.href = safeUrl(s.url);
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         a.title = label;
