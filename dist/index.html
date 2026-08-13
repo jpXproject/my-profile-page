@@ -460,6 +460,8 @@ var SOCIALS = [
 
 var TAGS = ["Networking • Friendships • Creative", "Open for Projects ✦"];
 var PROMPT = "xcode@network:~$";
+var PAGE_NAME = "Jpx Project";
+var PAGE_ROLE = "CREATOR • BUILDER • AI ENTHUSIAST";
 
 var CLICKS_API = "https://jpx-click-counter.panx-je.workers.dev";
 var LOCAL_KEY = "jpx_link_clicks_local_v3";
@@ -517,45 +519,101 @@ var ICONS = {
 
   /* --- Tagline & prompt --- */
   var tagsEl = $('#tagsEl');
-  TAGS.forEach(function (t, i) {
-    var pill = document.createElement('span');
-    pill.className = 'tag';
-    var parts = t.split(' ');
-    pill.innerHTML = '<i>✦</i> ' + t;
-    tagsEl.appendChild(pill);
-    if (i < TAGS.length - 1) { /* separator antar pill */ }
-  });
-  $('#promptEl').textContent = PROMPT;
+  var promptEl = $('#promptEl');
+  function renderHeader() {
+    var n = $('#nameEl'); if (n) n.textContent = PAGE_NAME;
+    var r = $('#roleEl'); if (r) r.textContent = PAGE_ROLE;
+    tagsEl.innerHTML = '';
+    TAGS.forEach(function (t) {
+      var pill = document.createElement('span');
+      pill.className = 'tag';
+      pill.innerHTML = '<i>✦</i> ' + t;
+      tagsEl.appendChild(pill);
+    });
+    promptEl.textContent = PROMPT;
+  }
 
   /* --- Links (dengan hitung klik) --- */
   var list = $('#linkList');
-  LINKS.forEach(function (l) {
-    var a = document.createElement('a');
-    a.className = 'link-btn' + (l.featured ? ' featured' : '');
-    a.href = l.url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    var iconHtml = '<span class="lb-icon">' + (ICONS[l.icon] || '<span class="emoji">🔗</span>') + '</span>';
-    a.innerHTML =
-      (l.badge ? '<span class="lb-badge">' + l.badge + '</span>' : '') +
-      iconHtml +
-      '<span class="lb-text"><span class="lb-title">' + l.title + '</span>' +
-      (l.sub ? '<span class="lb-sub">' + l.sub + '</span>' : '') +
-      '</span>' +
-      '<span class="lb-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>';
-    list.appendChild(a);
-  });
+  function renderLinks() {
+    list.innerHTML = '';
+    LINKS.forEach(function (l) {
+      var a = document.createElement('a');
+      a.className = 'link-btn' + (l.featured ? ' featured' : '');
+      a.href = l.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      var iconHtml = '<span class="lb-icon">' + (ICONS[l.icon] || '<span class="emoji">🔗</span>') + '</span>';
+      a.innerHTML =
+        (l.badge ? '<span class="lb-badge">' + l.badge + '</span>' : '') +
+        iconHtml +
+        '<span class="lb-text"><span class="lb-title">' + l.title + '</span>' +
+        (l.sub ? '<span class="lb-sub">' + l.sub + '</span>' : '') +
+        '</span>' +
+        '<span class="lb-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>';
+      var badge = document.createElement('span');
+      badge.className = 'lb-count';
+      badge.innerHTML = '👆 <span class="lb-count-num">0</span>';
+      a.appendChild(badge);
+      var key = (a.dataset.key = l.url || l.title);
+      var update = function () {
+        var n = shown(key);
+        badge.querySelector('.lb-count-num').textContent = n.toLocaleString();
+        badge.classList.toggle('show', n > 0);
+      };
+      var bump = function () {
+        badge.classList.remove('bump');
+        void badge.offsetWidth;
+        badge.classList.add('bump');
+      };
+      a.addEventListener('click', function () {
+        localAdd[key] = (localAdd[key] || 0) + 1;
+        saveLocal(); update(); bump(); refreshTotal();
+        if (CLICKS_API) {
+          fetch(CLICKS_API + '/api/click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: key })
+          }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d && typeof d.count === 'number') {
+              serverCounts[key] = d.count;
+              delete localAdd[key];
+              saveLocal(); update(); refreshTotal();
+            }
+          }).catch(function () {});
+        }
+      });
+      update();
+      list.appendChild(a);
+    });
+  }
 
-  /* --- Sosial: semua platform, URL kosong dulu --- */
+  /* --- Sosial: aktif kalau URL diisi, placeholder kalau kosong --- */
   var socialGrid = $('#socialList');
-  SOCIALS.forEach(function (s) {
-    var el = document.createElement('span');   /* bukan <a> karena belum ada URL */
-    el.className = 'social-btn';
-    el.title = s.label + ' — URL belum diisi';
-    el.setAttribute('aria-label', s.label);
-    el.innerHTML = (ICONS[s.icon] || '') + '<span class="soon"></span>';
-    socialGrid.appendChild(el);
-  });
+  function renderSocials() {
+    socialGrid.innerHTML = '';
+    SOCIALS.forEach(function (s) {
+      var label = s.label || s.icon;
+      if (s.url) {
+        var a = document.createElement('a');
+        a.className = 'social-btn';
+        a.href = s.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.title = label;
+        a.setAttribute('aria-label', label);
+        a.innerHTML = (ICONS[s.icon] || '');
+        socialGrid.appendChild(a);
+      } else {
+        var el = document.createElement('span');
+        el.className = 'social-btn';
+        el.title = label + ' — URL belum diisi';
+        el.setAttribute('aria-label', label);
+        el.innerHTML = (ICONS[s.icon] || '') + '<span class="soon"></span>';
+        socialGrid.appendChild(el);
+      }
+    });
+  }
 
   /* --- Penghitung klik global --- */
   var totalEl = $('#totalClicks');
@@ -576,54 +634,28 @@ var ICONS = {
     if (totalEl) totalEl.textContent = sum.toLocaleString();
   }
 
-  document.querySelectorAll('.link-btn').forEach(function (a) {
-    var key = a.getAttribute('href') || a.textContent;
-    var badge = document.createElement('span');
-    badge.className = 'lb-count';
-    badge.innerHTML = '👆 <span class="lb-count-num">0</span>';
-    a.appendChild(badge);
-    var update = function () {
-      var n = shown(key);
-      badge.querySelector('.lb-count-num').textContent = n.toLocaleString();
-      badge.classList.toggle('show', n > 0);
-    };
-    var bump = function () {
-      badge.classList.remove('bump');
-      void badge.offsetWidth;
-      badge.classList.add('bump');
-    };
-    a.addEventListener('click', function () {
-      localAdd[key] = (localAdd[key] || 0) + 1;
-      saveLocal(); update(); bump(); refreshTotal();
-      if (CLICKS_API) {
-        fetch(CLICKS_API + '/api/click', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: key })
-        }).then(function (r) { return r.json(); }).then(function (d) {
-          if (d && typeof d.count === 'number') {
-            serverCounts[key] = d.count;
-            delete localAdd[key];
-            saveLocal(); update(); refreshTotal();
-          }
-        }).catch(function () {});
-      }
+  function syncBadges() {
+    document.querySelectorAll('.link-btn').forEach(function (a) {
+      var k = a.dataset.key || a.getAttribute('href') || a.textContent;
+      var n = shown(k);
+      var num = a.querySelector('.lb-count-num');
+      if (num) num.textContent = n.toLocaleString();
+      var c = a.querySelector('.lb-count');
+      if (c) c.classList.toggle('show', n > 0);
     });
-    update();
-  });
+    refreshTotal();
+  }
 
+  /* --- Render awal --- */
+  renderHeader();
+  renderLinks();
+  renderSocials();
   refreshTotal();
   if (CLICKS_API) {
     fetch(CLICKS_API + '/api/clicks').then(function (r) { return r.json(); }).then(function (d) {
       if (d && d.counts) {
         Object.assign(serverCounts, d.counts);
-        document.querySelectorAll('.link-btn').forEach(function (a) {
-          var k = a.getAttribute('href') || a.textContent;
-          var n = shown(k);
-          a.querySelector('.lb-count-num').textContent = n.toLocaleString();
-          a.querySelector('.lb-count').classList.toggle('show', n > 0);
-        });
-        refreshTotal();
+        syncBadges();
       }
     }).catch(function () {});
   }
@@ -635,20 +667,15 @@ var ICONS = {
       Object.keys(localAdd).forEach(function (k) { delete localAdd[k]; });
       document.querySelectorAll('.lb-count').forEach(function (b) {
         b.classList.remove('bump');
-        b.querySelector('.lb-count-num').textContent = '0';
+        var num = b.querySelector('.lb-count-num');
+        if (num) num.textContent = '0';
       });
       refreshTotal();
       if (CLICKS_API) {
         fetch(CLICKS_API + '/api/clicks').then(function (r) { return r.json(); }).then(function (d) {
           if (d && d.counts) {
             Object.assign(serverCounts, d.counts);
-            document.querySelectorAll('.link-btn').forEach(function (a) {
-              var k = a.getAttribute('href') || a.textContent;
-              var n = shown(k);
-              a.querySelector('.lb-count-num').textContent = n.toLocaleString();
-              a.querySelector('.lb-count').classList.toggle('show', n > 0);
-            });
-            refreshTotal();
+            syncBadges();
           }
         }).catch(function () {});
       }
@@ -657,25 +684,61 @@ var ICONS = {
 
   /* --- Avatar & background foto --- */
   var avatarImg = $('#avatarImg');
-  function loadAvatar(i) {
+  function applyAvatar(i) {
+    i = i || 0;
     if (i >= AVATAR_CANDIDATES.length) return;
     var img = new Image();
     img.onload = function () { avatarImg.src = AVATAR_CANDIDATES[i]; };
-    img.onerror = function () { loadAvatar(i + 1); };
+    img.onerror = function () { applyAvatar(i + 1); };
     img.src = AVATAR_CANDIDATES[i];
   }
-  function loadBg(i) {
+  function applyBg(i) {
+    i = i || 0;
     if (i >= BG_CANDIDATES.length) return;
     var img = new Image();
     img.onload = function () {
       $('#bgPhoto').style.backgroundImage = 'url("' + BG_CANDIDATES[i] + '")';
       document.body.classList.add('has-photo');
     };
-    img.onerror = function () { loadBg(i + 1); };
+    img.onerror = function () { applyBg(i + 1); };
     img.src = BG_CANDIDATES[i];
   }
-  loadAvatar(0);
-  loadBg(0);
+  function applyColors(c) {
+    if (!c) return;
+    var st = document.documentElement.style;
+    if (c.background) st.setProperty('--bg', c.background);
+    if (c.primary) st.setProperty('--accent', c.primary);
+    if (c.text) st.setProperty('--text', c.text);
+    if (c.accent) st.setProperty('--text-bright', c.accent);
+  }
+  applyAvatar(0);
+  applyBg(0);
+
+  /* ====================== PREVIEW DARI ADMIN PANEL ======================
+     Admin mengirim config via postMessage → halaman ini re-render.
+     Saat dibuka normal (tanpa admin), blok ini tidak aktif. */
+  window.__applyPreviewConfig = function (cfg) {
+    if (!cfg) return;
+    if (cfg.name) PAGE_NAME = cfg.name;
+    if (cfg.role) PAGE_ROLE = cfg.role;
+    if (cfg.taglines && cfg.taglines.length) TAGS = cfg.taglines;
+    if (cfg.links) LINKS = cfg.links;
+    if (cfg.socials) SOCIALS = cfg.socials;
+    if (cfg.photoAvatar && cfg.photoAvatar.length) AVATAR_CANDIDATES = cfg.photoAvatar;
+    if (cfg.photoBg && cfg.photoBg.length) BG_CANDIDATES = cfg.photoBg;
+    applyColors(cfg.colors);
+    renderHeader();
+    renderLinks();
+    renderSocials();
+    applyAvatar(0);
+    applyBg(0);
+  };
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (d && d.type === 'JPX_PREVIEW_CONFIG' && typeof window.__applyPreviewConfig === 'function') {
+      window.__applyPreviewConfig(d.config);
+    }
+  });
 
   /* ====================== ANIMASI TERMINAL ====================== */
   var body = $('#terminalBody');

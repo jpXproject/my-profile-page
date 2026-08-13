@@ -301,6 +301,29 @@ td{color:#b7bdcb}
   th,td{padding:10px 12px}
 }
 
+/* ============================================================
+   LIVE PREVIEW MODAL
+   ============================================================ */
+body.modal-open{overflow:hidden}
+.preview-modal{position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:clamp(10px,2vw,24px)}
+.preview-modal.active{display:flex}
+.preview-shell{width:100%;max-width:1200px;height:min(92vh,820px);background:var(--panel);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.7)}
+.preview-head{display:flex;align-items:center;gap:16px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.preview-head h3{font-size:15px;margin-right:auto}
+.device-switch{display:flex;gap:4px;background:var(--panel-3);padding:4px;border-radius:10px}
+.device-switch button{border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.18s}
+.device-switch button:hover{color:var(--text)}
+.device-switch button.active{background:var(--red);color:#fff}
+.preview-stage{flex:1;overflow:auto;padding:clamp(12px,2.5vw,28px);display:flex;justify-content:center;align-items:flex-start;min-width:0}
+.preview-frame{flex-shrink:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.6);transform-origin:top center;transition:width .25s ease,height .25s ease}
+.preview-frame iframe{width:100%;height:100%;border:0;display:block;background:#141418}
+.preview-note{color:var(--muted);font-size:12px;padding:10px 18px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:640px){
+  .preview-head{gap:10px;padding:10px 12px}
+  .device-switch button{padding:6px 10px;font-size:11px}
+  .preview-stage{padding:10px}
+}
+
 /* HIDDEN UTILITY */
 .hidden{display:none!important}
 </style>
@@ -349,7 +372,7 @@ td{color:#b7bdcb}
     <input class="search" placeholder="Search...">
   </div>
   <div class="top-actions">
-    <button class="top-action" onclick="previewWebsite()">👁 Preview</button>
+    <button class="top-action" onclick="openPreview()">👁 Live Preview</button>
     <div class="top-avatar" id="topAvatar">JP</div>
   </div>
 </header>
@@ -482,21 +505,21 @@ td{color:#b7bdcb}
     <div class="form-row">
       <div class="form-group">
         <label>Warna Utama (Primary)</label>
-        <input type="color" id="configPrimaryColor" value="#8b5cf6" data-auto-save>
+        <input type="color" id="configPrimaryColor" value="#3dff8b" data-auto-save>
       </div>
       <div class="form-group">
         <label>Warna Aksen (Accent)</label>
-        <input type="color" id="configAccentColor" value="#22d3ee" data-auto-save>
+        <input type="color" id="configAccentColor" value="#f0f0f5" data-auto-save>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label>Warna Background</label>
-        <input type="color" id="configBgColor" value="#05050f" data-auto-save>
+        <input type="color" id="configBgColor" value="#141418" data-auto-save>
       </div>
       <div class="form-group">
         <label>Warna Teks</label>
-        <input type="color" id="configTextColor" value="#f2f2ff" data-auto-save>
+        <input type="color" id="configTextColor" value="#d0d0d8" data-auto-save>
       </div>
     </div>
   </div>
@@ -534,7 +557,7 @@ td{color:#b7bdcb}
     <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="saveConfigToServer()">💾 Simpan ke Server</button>
       <button class="btn btn-secondary" onclick="loadConfig()">🔄 Muat Ulang</button>
-      <button class="btn btn-secondary" onclick="previewWebsite()">👁 Preview Website</button>
+      <button class="btn btn-secondary" onclick="openPreview()">👁 Live Preview</button>
       <button class="btn btn-danger" onclick="resetConfig()">🗑 Reset Default</button>
     </div>
   </div>
@@ -612,6 +635,30 @@ td{color:#b7bdcb}
   </div>
 </div>
 
+<!-- LIVE PREVIEW MODAL -->
+<div class="preview-modal" id="previewModal" onclick="if(event.target===this)closePreview()">
+  <div class="preview-shell">
+    <div class="preview-head">
+      <h3>👁 Live Preview</h3>
+      <div class="device-switch">
+        <button data-device="desktop" class="active" onclick="setDevice('desktop')">🖥 Desktop</button>
+        <button data-device="tablet" onclick="setDevice('tablet')">💻 Tablet</button>
+        <button data-device="mobile" onclick="setDevice('mobile')">📱 Mobile</button>
+      </div>
+      <button class="modal-close" onclick="closePreview()" aria-label="Tutup preview">&times;</button>
+    </div>
+    <div class="preview-stage" id="previewStage">
+      <div class="preview-frame" id="previewFrame">
+        <iframe id="previewIframe" title="Live Preview"></iframe>
+      </div>
+    </div>
+    <div class="preview-note">
+      <span>⚡ Perubahan form langsung tampil di preview — tanpa reload.</span>
+      <span style="margin-left:auto">Desktop 100% · Tablet 768px · Mobile 390px</span>
+    </div>
+  </div>
+</div>
+
 <!-- SAVE STATUS -->
 <div class="save-status" id="saveStatus"></div>
 
@@ -630,6 +677,7 @@ let config = {
   photoAvatar:["avatar.jpg"],photoBg:["bg.jpg"],clicksApi:API_BASE,
   links:[
     {title:"🚀 AI Coding GRATIS — Coba Sekarang!",sub:"Build anything with AI · Free · No card needed",url:"https://freebuff.com/?ref=ref-7a6360b8-b763-4d64-b02f-10f39e8d9724",featured:true,badge:"⭐ Recommended"},
+    {title:"🤖 Bot Dashboard",sub:"Jpx Bot — Trading · Security · AI Assist",url:"https://master.commandcenter-4fp.pages.dev/",icon:"bot"},
     {title:"GitHub",sub:"Kode & open-source project",url:"https://github.com/jpXproject",icon:"gh"},
     {title:"Threads",sub:"Pikiran & update harian",url:"https://threads.com/jepanx",icon:"threads"},
     {title:"TikTok",sub:"Konten & video harian 🎵",url:"https://tiktok.com/@oneal___",icon:"tt"}
@@ -639,7 +687,7 @@ let config = {
     {icon:"wa",url:"https://wa.me/6285749409040"},
     {icon:"yt",url:"https://www.youtube.com/jpxproject"}
   ],
-  colors:{primary:"#8b5cf6",accent:"#22d3ee",background:"#05050f",text:"#f2f2ff"}
+  colors:{primary:"#3dff8b",accent:"#f0f0f5",background:"#141418",text:"#d0d0d8"}
 };
 let authToken=null,currentUser=null,saveTimeout=null,hasUnsavedChanges=false;
 
@@ -696,10 +744,10 @@ function populateForms(){
   g('configBg').value=(config.photoBg||[])[0]||'';
   g('configApiUrl').value=config.clicksApi||'';
   if(config.colors){
-    g('configPrimaryColor').value=config.colors.primary||'#8b5cf6';
-    g('configAccentColor').value=config.colors.accent||'#22d3ee';
-    g('configBgColor').value=config.colors.background||'#05050f';
-    g('configTextColor').value=config.colors.text||'#f2f2ff';
+    g('configPrimaryColor').value=config.colors.primary||'#3dff8b';
+    g('configAccentColor').value=config.colors.accent||'#f0f0f5';
+    g('configBgColor').value=config.colors.background||'#141418';
+    g('configTextColor').value=config.colors.text||'#d0d0d8';
   }
 }
 function collectConfig(){
@@ -742,7 +790,7 @@ function triggerAutoSave(){
   },800);
 }
 document.querySelectorAll('[data-auto-save]').forEach(el=>{
-  el.addEventListener('input',()=>{hasUnsavedChanges=true;triggerAutoSave()});
+  el.addEventListener('input',()=>{hasUnsavedChanges=true;triggerAutoSave();sendPreview()});
 });
 window.addEventListener('beforeunload',e=>{if(hasUnsavedChanges){e.preventDefault();e.returnValue=''}});
 
@@ -848,9 +896,9 @@ function saveLink(){
   if(document.getElementById('linkFeatured').checked)l.featured=true;
   const badge=document.getElementById('linkBadge').value;if(badge)l.badge=badge;
   if(i!=='')config.links[i]=l;else config.links.push(l);
-  renderLinks();closeLinkModal();triggerAutoSave();showToast('Link tersimpan!','success');
+  renderLinks();closeLinkModal();triggerAutoSave();sendPreview();showToast('Link tersimpan!','success');
 }
-function deleteLink(i){if(confirm('Hapus link ini?')){config.links.splice(i,1);renderLinks();triggerAutoSave();showToast('Link dihapus','success')}}
+function deleteLink(i){if(confirm('Hapus link ini?')){config.links.splice(i,1);renderLinks();triggerAutoSave();sendPreview();showToast('Link dihapus','success')}}
 
 /* ============================================================
    SOCIAL CRUD
@@ -887,9 +935,9 @@ function saveSocial(){
   const i=document.getElementById('editSocialIndex').value;
   const s={icon:document.getElementById('socialIcon').value,url:document.getElementById('socialUrl').value};
   if(i!=='')config.socials[i]=s;else config.socials.push(s);
-  renderSocials();closeSocialModal();triggerAutoSave();showToast('Social tersimpan!','success');
+  renderSocials();closeSocialModal();triggerAutoSave();sendPreview();showToast('Social tersimpan!','success');
 }
-function deleteSocial(i){if(confirm('Hapus social ini?')){config.socials.splice(i,1);renderSocials();triggerAutoSave();showToast('Social dihapus','success')}}
+function deleteSocial(i){if(confirm('Hapus social ini?')){config.socials.splice(i,1);renderSocials();triggerAutoSave();sendPreview();showToast('Social dihapus','success')}}
 
 /* ============================================================
    NAVIGATION
@@ -935,9 +983,69 @@ function showToast(msg,type='success'){
 }
 
 /* ============================================================
-   PREVIEW
+   LIVE PREVIEW — inline, Desktop/Tablet/Mobile, auto-scale
    ============================================================ */
-function previewWebsite(){window.open('https://jpxcode.pages.dev/','_blank')}
+var PREVIEW_DEVICES = {
+  desktop: { w: '100%', h: 640 },
+  tablet:  { w: '768px', h: 700 },
+  mobile:  { w: '390px', h: 780 }
+};
+function previewSrc(){
+  // Lokal (file://): pakai dist/index.html supaya offline & sesuai versi lokal.
+  // Deployed: tampilkan halaman publik live (renderer yang sama).
+  return window.location.protocol === 'file:' ? 'dist/index.html' : 'https://jpxcode.pages.dev/';
+}
+function openPreview(){
+  var modal=document.getElementById('previewModal');
+  var iframe=document.getElementById('previewIframe');
+  iframe.onload=function(){sendPreview()};   /* pasang dari parent, bukan inline di iframe */
+  iframe.src=previewSrc();
+  modal.classList.add('active');
+  document.body.classList.add('modal-open');
+  setDevice('desktop');
+  sendPreview();
+}
+function closePreview(){
+  document.getElementById('previewModal').classList.remove('active');
+  document.body.classList.remove('modal-open');
+}
+function setDevice(d){
+  var dev=PREVIEW_DEVICES[d];
+  var frame=document.getElementById('previewFrame');
+  frame.dataset.mode=d;
+  frame.style.width=dev.w;
+  frame.style.height=dev.h+'px';
+  document.querySelectorAll('.device-switch button').forEach(function(b){b.classList.toggle('active',b.dataset.device===d)});
+  updatePreviewScale();
+}
+function updatePreviewScale(){
+  var frame=document.getElementById('previewFrame');
+  var stage=document.getElementById('previewStage');
+  if(frame.dataset.mode==='desktop'){
+    frame.style.transform='none';
+    stage.style.height='';
+    return;
+  }
+  var cs=getComputedStyle(stage);
+  var avail=stage.clientWidth-parseInt(cs.paddingLeft||0)-parseInt(cs.paddingRight||0)-4;
+  if(avail<10)return;   /* stage belum terlihat (modal tertutup) → jangan scale negatif */
+  var baseW=parseFloat(frame.style.width);
+  var scale=Math.min(1,avail/baseW);
+  frame.style.transform='scale('+scale+')';
+  stage.style.height=Math.round(parseFloat(frame.style.height)*scale)+'px';
+}
+function sendPreview(){
+  var iframe=document.getElementById('previewIframe');
+  if(!iframe||!iframe.contentWindow)return;
+  collectConfig();
+  iframe.contentWindow.postMessage({type:'JPX_PREVIEW_CONFIG',config:config},'*');
+}
+window.addEventListener('resize',function(){
+  if(document.getElementById('previewModal').classList.contains('active'))updatePreviewScale();
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('previewModal').classList.contains('active'))closePreview();
+});
 
 /* ============================================================
    INIT
