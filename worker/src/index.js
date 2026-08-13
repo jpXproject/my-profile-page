@@ -9,6 +9,12 @@
  *   GET    /api/stats → { counts, total, ts }      (401 kalau token salah)
  *   DELETE /api/stats → reset semua hitungan ke 0
  *
+ * Endpoint AUTH:
+ *   GET  /api/auth/github            → redirect ke GitHub OAuth
+ *   POST /api/auth/password          → login pakai DASH_SECRET → token 7 hari
+ *   POST /api/auth/validate          → cek token valid
+ *   POST /api/auth/logout            → hapus token
+ *
  * Secret dibaca dari env.DASH_SECRET (dipasang via wrangler secret).
  */
 
@@ -449,6 +455,30 @@ export default {
         return json({ ok: true });
       } catch {
         return json({ error: 'Invalid request' }, 400);
+      }
+    }
+
+    // POST /api/auth/password — login via password (DASH_SECRET), token 7 hari
+    if (request.method === 'POST' && url.pathname === '/api/auth/password') {
+      const clientIP = getClientIP(request);
+      if (!checkRateLimit(clientIP)) {
+        return json({ error: 'rate_limit_exceeded', message: 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.' }, 429);
+      }
+      try {
+        const { password } = await request.json();
+        if (typeof password !== 'string' || !password) {
+          return json({ error: 'password_required' }, 400);
+        }
+        if (!env.DASH_SECRET) {
+          return json({ error: 'password_not_configured', message: 'DASH_SECRET belum dipasang di worker (wrangler secret).' }, 503);
+        }
+        if (!safeEqual(password, env.DASH_SECRET)) {
+          return json({ error: 'invalid_password' }, 401);
+        }
+        const token = await createAuthToken(env, { login: 'admin', name: 'Admin', avatar_url: '' });
+        return json({ ok: true, token, user: { login: 'admin', name: 'Admin', avatar: '' } });
+      } catch {
+        return json({ error: 'invalid_request' }, 400);
       }
     }
 

@@ -340,7 +340,7 @@ body.modal-open{overflow:hidden}
       style="width:100%;padding:12px 16px;background:#050507;border:1px solid #252933;border-radius:8px;color:var(--text);font-size:14px;margin-bottom:12px"
       onkeydown="if(event.key==='Enter')loginWithPassword()" />
     <button class="btn btn-secondary" onclick="loginWithPassword()">🔒 Masuk dengan Password</button>
-    <p style="margin:18px 0 0;font-size:12px;color:var(--muted)">Password = akses panel lokal · autosave ke server butuh GitHub</p>
+    <p style="margin:18px 0 0;font-size:12px;color:var(--muted)">Password diverifikasi server (DASH_SECRET) · autosave ke server ikut aktif</p>
   </div>
 </div>
 
@@ -770,11 +770,24 @@ let authToken=null,currentUser=null,saveTimeout=null,hasUnsavedChanges=false;
 function loginWithGitHub(){
   window.location.href=`${API_BASE}/api/auth/github?redirect_uri=${encodeURIComponent(window.location.href.split('?')[0])}`;
 }
-function loginWithPassword(){
+async function loginWithPassword(){
   const pw=document.getElementById('passwordInput')?.value;
   if(!pw){showToast('Masukkan password','error');return}
-  if(pw==='jpxadmin'){authToken=pw;showAdminPanel();showToast('Login berhasil!','success')}
-  else showToast('Password salah','error');
+  const btn=document.querySelector('.login-card .btn-secondary');
+  if(btn)btn.textContent='⏳ Memeriksa...';
+  try{
+    const r=await fetch(`${API_BASE}/api/auth/password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.token){
+      authToken=d.token;currentUser=d.user||{login:'admin',name:'Admin'};
+      localStorage.setItem('adminToken',authToken);localStorage.setItem('adminUser',JSON.stringify(currentUser));
+      showAdminPanel();showToast('Login berhasil!','success');
+    }else if(r.status===401)showToast('Password salah','error');
+    else if(r.status===429)showToast('Terlalu banyak percobaan — tunggu 1 menit','error');
+    else if(r.status===503)showToast('⚠️ '+(d.message||'Password belum dikonfigurasi di server'),'error');
+    else showToast('Login gagal — coba lagi','error');
+  }catch(e){showToast('❌ Server tidak terjangkau','error')}
+  if(btn)btn.textContent='🔒 Masuk dengan Password';
 }
 async function logout(){
   if(authToken){try{await fetch(`${API_BASE}/api/auth/logout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:authToken})})}catch(e){}}
