@@ -382,7 +382,7 @@ body.has-photo .bg-photo{opacity:1}
 <main class="card">
   <div class="win-bar">
     <div class="win-dots"><span class="d-red"></span><span class="d-yellow"></span><span class="d-green"></span></div>
-    <div class="win-title"><b>jpx</b>@jpxcode — zsh</div>
+    <div class="win-title" id="winTitleEl"><b>jpx</b>@jpxcode — zsh</div>
     <div class="win-dots"><span class="d-red"></span><span class="d-yellow"></span><span class="d-green"></span></div>
   </div>
 
@@ -425,7 +425,7 @@ body.has-photo .bg-photo{opacity:1}
 
   <footer class="foot">
     <div class="online"><i></i> online — server aktif</div>
-    © 2026 · Dibuat dengan ♥ · Semua link penting di sini<br />
+    <span id="footTextEl">© 2026 · Dibuat dengan ♥ · Semua link penting di sini</span><br />
     <span class="clicks">👆 <b id="totalClicks">0</b> klik global · <button id="resetClicks" title="Reset tampilan lokal">reset lokal</button></span>
   </footer>
 </main>
@@ -465,6 +465,9 @@ var TAGS = ["Networking • Friendships • Creative", "Open for Projects ✦"];
 var PROMPT = "xcode@network:~$";
 var PAGE_BIO = "";
 var SITE_URL = "https://jpxcode.pages.dev";
+var WIN_TITLE = "jpx@jpxcode — zsh";
+var FOOT_TEXT = "© 2026 · Dibuat dengan ♥ · Semua link penting di sini";
+var TERMINAL_PROMPT = "xcode@jpxproject:~/src$ ";
 var PAGE_NAME = "Jpx Project";
 var PAGE_ROLE = "CREATOR • BUILDER • AI ENTHUSIAST";
 
@@ -521,6 +524,7 @@ var ICONS = {
 /* ====================== APLIKASI ====================== */
 (function () {
   var $ = function (s) { return document.querySelector(s); };
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   /* --- Tagline & prompt --- */
   var tagsEl = $('#tagsEl');
@@ -541,6 +545,13 @@ var ICONS = {
       if (PAGE_BIO) { bioEl.textContent = PAGE_BIO; bioEl.hidden = false; }
       else bioEl.hidden = true;
     }
+    var winEl = $('#winTitleEl');
+    if (winEl) {
+      var at = WIN_TITLE.indexOf('@');
+      winEl.innerHTML = at > 0 ? '<b>' + esc(WIN_TITLE.slice(0, at)) + '</b>' + esc(WIN_TITLE.slice(at)) : esc(WIN_TITLE);
+    }
+    var fEl = $('#footTextEl');
+    if (fEl) fEl.textContent = FOOT_TEXT;
   }
 
   /* --- Meta tags ikut domain & nama (siteUrl dari admin) --- */
@@ -751,6 +762,9 @@ var ICONS = {
     if (typeof cfg.bio === 'string') PAGE_BIO = cfg.bio;
     if (typeof cfg.prompt === 'string' && cfg.prompt) PROMPT = cfg.prompt;
     if (typeof cfg.siteUrl === 'string' && cfg.siteUrl) SITE_URL = cfg.siteUrl;
+    if (typeof cfg.windowTitle === 'string' && cfg.windowTitle) WIN_TITLE = cfg.windowTitle;
+    if (typeof cfg.footText === 'string' && cfg.footText) FOOT_TEXT = cfg.footText;
+    if (Array.isArray(cfg.terminal)) TERMINAL = cfg.terminal;
     if (Array.isArray(cfg.taglines)) TAGS = cfg.taglines;
     if (Array.isArray(cfg.links)) LINKS = cfg.links;
     if (Array.isArray(cfg.socials)) SOCIALS = cfg.socials;
@@ -764,6 +778,7 @@ var ICONS = {
     applySiteMeta();
     applyAvatar(0);
     applyBg(0);
+    if (window.__restartTerminal) window.__restartTerminal();
   }
   window.__applySiteConfig = applySiteConfig;
 
@@ -904,7 +919,7 @@ var ICONS = {
     line.className = 'terminal-line';
     var p = document.createElement('span');
     p.className = 'terminal-prompt';
-    p.textContent = 'xcode@jpxproject:~/src$ ';
+    p.textContent = TERMINAL_PROMPT;
     line.appendChild(p);
     line.appendChild(cursorEl());
     body.appendChild(line);
@@ -923,6 +938,7 @@ var ICONS = {
     isTyping = false;
     startTerminal();
   });
+  window.__restartTerminal = startTerminal;
   setTimeout(startTerminal, 800);
 })();
 </script>

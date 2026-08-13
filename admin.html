@@ -532,6 +532,21 @@ body.modal-open{overflow:hidden}
         <input type="color" id="configTextColor" value="#d0d0d8" data-auto-save>
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Judul Window (header terminal website)</label>
+        <input type="text" id="configWindowTitle" placeholder="jpx@jpxcode — zsh" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>Teks Footer</label>
+        <input type="text" id="configFootText" placeholder="© 2026 · Dibuat dengan ♥" data-auto-save>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Animasi Terminal (satu baris per baris — awali dengan <code>$</code> untuk prompt)</label>
+      <textarea id="configTerminal" rows="8" style="font-family:monospace;font-size:12px" data-auto-save></textarea>
+      <small style="color:var(--muted)">Contoh: <code>$ ls -la</code> lalu baris output biasa. Baris kosong = spasi.</small>
+    </div>
   </div>
 </div>
 
@@ -682,6 +697,28 @@ let config = {
   taglines:["Networking • Friendships • Creative","Open for Projects ✦"],
   bio:"Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
   prompt:"xcode@network:~$",siteUrl:"https://jpxcode.pages.dev",
+  windowTitle:"jpx@jpxcode — zsh",
+  footText:"© 2026 · Dibuat dengan ♥ · Semua link penting di sini",
+  terminal:[
+    {type:"prompt",text:"xcode@jpxproject:~/src$ ls -la"},
+    {type:"output",text:"total 48"},
+    {type:"output",text:"drwxr-xr-x  8 user user 4096 Apr 15 10:30 ."},
+    {type:"output",text:"-rw-r--r--  1 user user 2456 Apr 15 10:30 app.js"},
+    {type:"output",text:"drwxr-xr-x  4 user user 4096 Apr 15 10:28 src"},
+    {type:"output",text:"-rw-r--r--  1 user user 1034 Apr 15 10:20 package.json"},
+    {type:"prompt",text:"xcode@jpxproject:~/src$ npm run dev"},
+    {type:"output",text:""},
+    {type:"output",text:"> freebuff@0.1.0 dev"},
+    {type:"output",text:"> vite --host"},
+    {type:"output",text:""},
+    {type:"output",text:"  VITE v5.2.0  ready in 320 ms",className:"cyan"},
+    {type:"output",text:""},
+    {type:"output",text:"  ➜  Local:   http://localhost:5173/",className:"green"},
+    {type:"output",text:"  ➜  press h + enter to show help",className:"dim"},
+    {type:"output",text:""},
+    {type:"output",text:"✓  Compiled successfully in 1.2s",className:"green"},
+    {type:"output",text:"⚡  Server running at http://localhost:5173",className:"yellow"}
+  ],
   photoAvatar:["avatar.jpg"],photoBg:["bg.jpg"],clicksApi:API_BASE,
   links:[
     {title:"🚀 AI Coding GRATIS — Coba Sekarang!",sub:"Build anything with AI · Free · No card needed",url:"https://freebuff.com/?ref=ref-7a6360b8-b763-4d64-b02f-10f39e8d9724",featured:true,badge:"⭐ Recommended"},
@@ -762,6 +799,9 @@ function populateForms(){
   g('configBio').value=config.bio||'';
   g('configPrompt').value=config.prompt||'';
   g('configSiteUrl').value=config.siteUrl||'';
+  g('configWindowTitle').value=config.windowTitle||'';
+  g('configFootText').value=config.footText||'';
+  g('configTerminal').value=terminalToText(config.terminal);
   g('configTaglines').value=(config.taglines||[]).join(', ');
   g('configAvatar').value=(config.photoAvatar||[])[0]||'';
   g('configBg').value=(config.photoBg||[])[0]||'';
@@ -780,6 +820,9 @@ function collectConfig(){
   config.bio=g('configBio').value;
   config.prompt=g('configPrompt').value;
   config.siteUrl=g('configSiteUrl').value;
+  config.windowTitle=g('configWindowTitle').value;
+  config.footText=g('configFootText').value;
+  config.terminal=textToTerminal(g('configTerminal').value);
   config.taglines=g('configTaglines').value.split(',').map(t=>t.trim()).filter(t=>t);
   const av=g('configAvatar').value,bg=g('configBg').value;
   config.photoAvatar=av?[av]:[];config.photoBg=bg?[bg]:[];
@@ -797,6 +840,31 @@ async function saveConfigToServer(){
   }catch(e){showSaveStatus('error');showToast('❌ Offline','error')}
 }
 function resetConfig(){if(confirm('Reset ke default?')){localStorage.removeItem('jpxConfig');location.reload()}}
+
+/* ============================================================
+   TERMINAL FORMAT (admin text ↔ config array)
+   ============================================================ */
+const TERMINAL_PROMPT='xcode@jpxproject:~/src$ ';
+function textToTerminal(txt){
+  const out=[];
+  String(txt||'').split('\n').forEach(line=>{
+    const t=line.trim();
+    if(t==='$')out.push({type:'prompt',text:TERMINAL_PROMPT});
+    else if(t.startsWith('$ '))out.push({type:'prompt',text:TERMINAL_PROMPT+t.slice(2)});
+    else out.push({type:'output',text:line});
+  });
+  out.push({type:'prompt',text:TERMINAL_PROMPT,isFinal:true});
+  return out;
+}
+function terminalToText(arr){
+  return (arr||[]).map(l=>{
+    if(l.type==='prompt'){
+      const idx=l.text.indexOf('$ ');
+      return '$ '+(idx>=0?l.text.slice(idx+2):'');
+    }
+    return l.text;
+  }).join('\n');
+}
 
 /* ============================================================
    AUTO-SAVE (DEBOUNCE 800ms)
