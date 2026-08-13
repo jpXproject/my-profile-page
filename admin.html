@@ -329,7 +329,22 @@ body.modal-open{overflow:hidden}
 </style>
 </head>
 <body>
-<div class="app">
+<!-- LOGIN SCREEN (gerbang: panel tersembunyi sampai login) -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>Jpx <em>Admin</em></h1>
+    <p>Masuk untuk mengelola website &amp; dashboard.</p>
+    <button class="btn btn-primary" onclick="loginWithGitHub()">🔑 Masuk dengan GitHub</button>
+    <div class="divider"><span>atau</span></div>
+    <input type="password" id="passwordInput" placeholder="Password admin…" autocomplete="off"
+      style="width:100%;padding:12px 16px;background:#050507;border:1px solid #252933;border-radius:8px;color:var(--text);font-size:14px;margin-bottom:12px"
+      onkeydown="if(event.key==='Enter')loginWithPassword()" />
+    <button class="btn btn-secondary" onclick="loginWithPassword()">🔒 Masuk dengan Password</button>
+    <p style="margin:18px 0 0;font-size:12px;color:var(--muted)">Password = akses panel lokal · autosave ke server butuh GitHub</p>
+  </div>
+</div>
+
+<div class="app" id="adminPanel" style="display:none">
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="brand">
