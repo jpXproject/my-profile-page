@@ -189,6 +189,8 @@ body.has-photo .bg-photo{opacity:1}
 .prompt-line .prompt-text{color:var(--accent);font-weight:600}
 .cursor{display:inline-block;width:7px;height:1em;background:var(--accent);vertical-align:text-bottom;margin-left:2px;animation:blink 1s step-end infinite;border-radius:2px}
 @keyframes blink{50%{opacity:0}}
+.bio{margin-top:10px;font-size:.84rem;line-height:1.6;color:var(--text-dim)}
+.bio[hidden]{display:none}
 
 /* ---------- 4. TERMINAL ---------- */
 .terminal-section{padding:16px 20px 0}
@@ -392,6 +394,7 @@ body.has-photo .bg-photo{opacity:1}
     </div>
     <h1 class="name" id="nameEl">Jpx Project</h1>
     <span class="role-chip"><span class="dot"></span> <span id="roleEl">CREATOR • BUILDER • AI ENTHUSIAST</span></span>
+    <p class="bio" id="bioEl" hidden></p>
     <div class="tags" id="tagsEl"></div>
     <div class="prompt-line"><span class="prompt-text" id="promptEl"></span><span class="cursor"></span></div>
   </header>
@@ -460,6 +463,8 @@ var SOCIALS = [
 
 var TAGS = ["Networking • Friendships • Creative", "Open for Projects ✦"];
 var PROMPT = "xcode@network:~$";
+var PAGE_BIO = "";
+var SITE_URL = "https://jpxcode.pages.dev";
 var PAGE_NAME = "Jpx Project";
 var PAGE_ROLE = "CREATOR • BUILDER • AI ENTHUSIAST";
 
@@ -531,6 +536,27 @@ var ICONS = {
       tagsEl.appendChild(pill);
     });
     promptEl.textContent = PROMPT;
+    var bioEl = $('#bioEl');
+    if (bioEl) {
+      if (PAGE_BIO) { bioEl.textContent = PAGE_BIO; bioEl.hidden = false; }
+      else bioEl.hidden = true;
+    }
+  }
+
+  /* --- Meta tags ikut domain & nama (siteUrl dari admin) --- */
+  function applySiteMeta() {
+    var base = (SITE_URL || '').replace(/\/+$/, '');
+    if (!base) return;
+    var set = function (sel, attr, val) { var el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+    set('link[rel="canonical"]', 'href', base + '/');
+    set('meta[property="og:url"]', 'content', base + '/');
+    set('link[rel="icon"]', 'href', base + '/avatar.jpg');
+    set('meta[property="og:image"]', 'content', base + '/og-image.png');
+    set('meta[name="twitter:image"]', 'content', base + '/og-image.png');
+    var title = PAGE_NAME ? PAGE_NAME + ' · Semua Link' : document.title;
+    document.title = title;
+    set('meta[property="og:title"]', 'content', title);
+    set('meta[name="twitter:title"]', 'content', title);
   }
 
   /* --- Links (dengan hitung klik) --- */
@@ -650,6 +676,7 @@ var ICONS = {
   renderHeader();
   renderLinks();
   renderSocials();
+  applySiteMeta();
   refreshTotal();
   if (CLICKS_API) {
     fetch(CLICKS_API + '/api/clicks').then(function (r) { return r.json(); }).then(function (d) {
@@ -721,6 +748,9 @@ var ICONS = {
     if (!cfg || typeof cfg !== 'object') return;
     if (typeof cfg.name === 'string' && cfg.name) PAGE_NAME = cfg.name;
     if (typeof cfg.role === 'string' && cfg.role) PAGE_ROLE = cfg.role;
+    if (typeof cfg.bio === 'string') PAGE_BIO = cfg.bio;
+    if (typeof cfg.prompt === 'string' && cfg.prompt) PROMPT = cfg.prompt;
+    if (typeof cfg.siteUrl === 'string' && cfg.siteUrl) SITE_URL = cfg.siteUrl;
     if (Array.isArray(cfg.taglines)) TAGS = cfg.taglines;
     if (Array.isArray(cfg.links)) LINKS = cfg.links;
     if (Array.isArray(cfg.socials)) SOCIALS = cfg.socials;
@@ -731,6 +761,7 @@ var ICONS = {
     renderHeader();
     renderLinks();
     renderSocials();
+    applySiteMeta();
     applyAvatar(0);
     applyBg(0);
   }

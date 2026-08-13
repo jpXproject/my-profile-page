@@ -457,6 +457,16 @@ body.modal-open{overflow:hidden}
       <label>Bio / Deskripsi</label>
       <textarea id="configBio" placeholder="Halo! Selamat datang di website saya..." data-auto-save></textarea>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Prompt Terminal (header website)</label>
+        <input type="text" id="configPrompt" placeholder="xcode@network:~$" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>URL Website (domain publik)</label>
+        <input type="text" id="configSiteUrl" placeholder="https://jpxcode.pages.dev" data-auto-save>
+      </div>
+    </div>
     <div class="form-group">
       <label>Tagline (typing effect - pisahkan dengan koma)</label>
       <input type="text" id="configTaglines" placeholder="🚀 Klik tombol paling atas!, Membuat sesuatu yang berguna ✦" data-auto-save>
@@ -549,10 +559,6 @@ body.modal-open{overflow:hidden}
     <div class="form-group">
       <label>API URL (Cloudflare Worker)</label>
       <input type="text" id="configApiUrl" placeholder="https://jpx-click-counter.panx-je.workers.dev" data-auto-save>
-    </div>
-    <div class="form-group">
-      <label>URL Website</label>
-      <input type="text" id="configSiteUrl" placeholder="https://jpxcode.pages.dev" data-auto-save>
     </div>
     <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="saveConfigToServer()">💾 Simpan ke Server</button>
@@ -674,6 +680,8 @@ let config = {
   name:"Jpx Project",role:"Creator · Builder · AI Enthusiast",
   bio:"Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
   taglines:["Networking • Friendships • Creative","Open for Projects ✦"],
+  bio:"Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
+  prompt:"xcode@network:~$",siteUrl:"https://jpxcode.pages.dev",
   photoAvatar:["avatar.jpg"],photoBg:["bg.jpg"],clicksApi:API_BASE,
   links:[
     {title:"🚀 AI Coding GRATIS — Coba Sekarang!",sub:"Build anything with AI · Free · No card needed",url:"https://freebuff.com/?ref=ref-7a6360b8-b763-4d64-b02f-10f39e8d9724",featured:true,badge:"⭐ Recommended"},
@@ -752,6 +760,8 @@ function populateForms(){
   g('configName').value=config.name||'';
   g('configRole').value=config.role||'';
   g('configBio').value=config.bio||'';
+  g('configPrompt').value=config.prompt||'';
+  g('configSiteUrl').value=config.siteUrl||'';
   g('configTaglines').value=(config.taglines||[]).join(', ');
   g('configAvatar').value=(config.photoAvatar||[])[0]||'';
   g('configBg').value=(config.photoBg||[])[0]||'';
@@ -768,6 +778,8 @@ function collectConfig(){
   config.name=g('configName').value;
   config.role=g('configRole').value;
   config.bio=g('configBio').value;
+  config.prompt=g('configPrompt').value;
+  config.siteUrl=g('configSiteUrl').value;
   config.taglines=g('configTaglines').value.split(',').map(t=>t.trim()).filter(t=>t);
   const av=g('configAvatar').value,bg=g('configBg').value;
   config.photoAvatar=av?[av]:[];config.photoBg=bg?[bg]:[];
@@ -1006,8 +1018,10 @@ var PREVIEW_DEVICES = {
 };
 function previewSrc(){
   // Lokal (file://): pakai dist/index.html supaya offline & sesuai versi lokal.
-  // Deployed: tampilkan halaman publik live (renderer yang sama).
-  return window.location.protocol === 'file:' ? 'dist/index.html' : 'https://jpxcode.pages.dev/';
+  // Deployed: tampilkan halaman publik live — ikuti URL Website (siteUrl) di config.
+  if (window.location.protocol === 'file:') return 'dist/index.html';
+  var base = (config.siteUrl || 'https://jpxcode.pages.dev').replace(/\/+$/,'');
+  return base + '/';
 }
 function openPreview(){
   var modal=document.getElementById('previewModal');
