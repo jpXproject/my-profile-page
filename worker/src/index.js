@@ -99,6 +99,7 @@ function sanitizeConfig(raw) {
     windowTitle: str(raw.windowTitle, 80),
     footText: str(raw.footText, 200),
     siteUrl: cleanUrl(raw.siteUrl, 200),
+    clicksApi: cleanUrl(raw.clicksApi, 200),
     colors: isPlainObject(raw.colors)
       ? Object.fromEntries(Object.entries(raw.colors).slice(0, 12).map(([k, v]) => [String(k).slice(0, 30), cleanText(v, 30)]))
       : {},
