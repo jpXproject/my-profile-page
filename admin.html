@@ -673,7 +673,7 @@ const API_BASE = 'https://jpx-click-counter.panx-je.workers.dev';
 let config = {
   name:"Jpx Project",role:"Creator · Builder · AI Enthusiast",
   bio:"Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
-  taglines:["🚀 Klik tombol paling atas — AI coding GRATIS!","Membuat sesuatu yang berguna ✦"],
+  taglines:["Networking • Friendships • Creative","Open for Projects ✦"],
   photoAvatar:["avatar.jpg"],photoBg:["bg.jpg"],clicksApi:API_BASE,
   links:[
     {title:"🚀 AI Coding GRATIS — Coba Sekarang!",sub:"Build anything with AI · Free · No card needed",url:"https://freebuff.com/?ref=ref-7a6360b8-b763-4d64-b02f-10f39e8d9724",featured:true,badge:"⭐ Recommended"},
@@ -683,9 +683,22 @@ let config = {
     {title:"TikTok",sub:"Konten & video harian 🎵",url:"https://tiktok.com/@oneal___",icon:"tt"}
   ],
   socials:[
-    {icon:"ig",url:"https://instagram.com/jepanx"},
-    {icon:"wa",url:"https://wa.me/6285749409040"},
-    {icon:"yt",url:"https://www.youtube.com/jpxproject"}
+    {icon:"ig",label:"Instagram",url:"https://instagram.com/jepanx"},
+    {icon:"wa",label:"WhatsApp",url:"https://wa.me/6285749409040"},
+    {icon:"yt",label:"YouTube",url:"https://www.youtube.com/jpxproject"},
+    {icon:"tt",label:"TikTok"},
+    {icon:"x",label:"X / Twitter"},
+    {icon:"tg",label:"Telegram"},
+    {icon:"gh",label:"GitHub"},
+    {icon:"fb",label:"Facebook"},
+    {icon:"threads",label:"Threads"},
+    {icon:"dc",label:"Discord"},
+    {icon:"in",label:"LinkedIn"},
+    {icon:"sp",label:"Spotify"},
+    {icon:"pin",label:"Pinterest"},
+    {icon:"snap",label:"Snapchat"},
+    {icon:"rd",label:"Reddit"},
+    {icon:"sg",label:"Signal"}
   ],
   colors:{primary:"#3dff8b",accent:"#f0f0f5",background:"#141418",text:"#d0d0d8"}
 };
@@ -907,7 +920,7 @@ function renderSocials(){
   const list=document.getElementById('socialList');list.innerHTML='';
   (config.socials||[]).forEach((s,i)=>{
     list.innerHTML+=`<div class="link-item">
-      <div class="link-info"><div class="link-title">${s.icon.toUpperCase()}</div><div class="link-url">${s.url}</div></div>
+      <div class="link-info"><div class="link-title">${(s.label||s.icon).toUpperCase()}</div><div class="link-url">${s.url||'Belum ada URL'}</div></div>
       <div class="link-actions">
         <button class="btn-icon" onclick="editSocial(${i})" title="Edit">✏️</button>
         <button class="btn-icon" onclick="deleteSocial(${i})" title="Hapus">🗑️</button>
@@ -934,7 +947,8 @@ function closeSocialModal(){document.getElementById('socialModal').classList.rem
 function saveSocial(){
   const i=document.getElementById('editSocialIndex').value;
   const s={icon:document.getElementById('socialIcon').value,url:document.getElementById('socialUrl').value};
-  if(i!=='')config.socials[i]=s;else config.socials.push(s);
+  if(i!==''){s.label=config.socials[i]&&config.socials[i].label;config.socials[i]=s}
+  else config.socials.push(s);
   renderSocials();closeSocialModal();triggerAutoSave();sendPreview();showToast('Social tersimpan!','success');
 }
 function deleteSocial(i){if(confirm('Hapus social ini?')){config.socials.splice(i,1);renderSocials();triggerAutoSave();sendPreview();showToast('Social dihapus','success')}}

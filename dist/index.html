@@ -714,31 +714,50 @@ var ICONS = {
   applyAvatar(0);
   applyBg(0);
 
-  /* ====================== PREVIEW DARI ADMIN PANEL ======================
-     Admin mengirim config via postMessage → halaman ini re-render.
-     Saat dibuka normal (tanpa admin), blok ini tidak aktif. */
-  window.__applyPreviewConfig = function (cfg) {
-    if (!cfg) return;
-    if (cfg.name) PAGE_NAME = cfg.name;
-    if (cfg.role) PAGE_ROLE = cfg.role;
-    if (cfg.taglines && cfg.taglines.length) TAGS = cfg.taglines;
-    if (cfg.links) LINKS = cfg.links;
-    if (cfg.socials) SOCIALS = cfg.socials;
-    if (cfg.photoAvatar && cfg.photoAvatar.length) AVATAR_CANDIDATES = cfg.photoAvatar;
-    if (cfg.photoBg && cfg.photoBg.length) BG_CANDIDATES = cfg.photoBg;
+  /* ====================== KONFIGURASI WEBSITE (satu sumber: admin) ======================
+     Website memakai config yang dikelola admin (worker /api/config atau postMessage
+     dari Live Preview di admin). Kalau tidak ada data, default di atas yang dipakai. */
+  function applySiteConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return;
+    if (typeof cfg.name === 'string' && cfg.name) PAGE_NAME = cfg.name;
+    if (typeof cfg.role === 'string' && cfg.role) PAGE_ROLE = cfg.role;
+    if (Array.isArray(cfg.taglines)) TAGS = cfg.taglines;
+    if (Array.isArray(cfg.links)) LINKS = cfg.links;
+    if (Array.isArray(cfg.socials)) SOCIALS = cfg.socials;
+    if (Array.isArray(cfg.photoAvatar) && cfg.photoAvatar.length) AVATAR_CANDIDATES = cfg.photoAvatar;
+    if (Array.isArray(cfg.photoBg) && cfg.photoBg.length) BG_CANDIDATES = cfg.photoBg;
+    if (typeof cfg.clicksApi === 'string' && cfg.clicksApi) CLICKS_API = cfg.clicksApi;
     applyColors(cfg.colors);
     renderHeader();
     renderLinks();
     renderSocials();
     applyAvatar(0);
     applyBg(0);
-  };
+  }
+  window.__applySiteConfig = applySiteConfig;
+
   window.addEventListener('message', function (e) {
     var d = e.data;
-    if (d && d.type === 'JPX_PREVIEW_CONFIG' && typeof window.__applyPreviewConfig === 'function') {
-      window.__applyPreviewConfig(d.config);
+    if (d && d.type === 'JPX_PREVIEW_CONFIG' && typeof window.__applySiteConfig === 'function') {
+      window.__applySiteConfig(d.config);
     }
   });
+
+  /* --- Ambil config dari server (yang disimpan admin) → website ikut tersinkron --- */
+  function loadServerConfig() {
+    if (!CLICKS_API) return;
+    var controller = null;
+    try { controller = new AbortController(); } catch (e) {}
+    var timer = setTimeout(function () { if (controller) controller.abort(); }, 3500);
+    fetch(CLICKS_API + '/api/config', controller ? { signal: controller.signal } : {})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.config && typeof d.config === 'object') applySiteConfig(d.config);
+      })
+      .catch(function () {})
+      .then(function () { clearTimeout(timer); });
+  }
+  loadServerConfig();
 
   /* ====================== ANIMASI TERMINAL ====================== */
   var body = $('#terminalBody');
