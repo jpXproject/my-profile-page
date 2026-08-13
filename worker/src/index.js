@@ -14,6 +14,9 @@
 
 const KV_KEY = 'counts';
 const EVENTS_KEY = 'click_events';
+const CONFIG_KEY = 'site_config';
+const AUTH_KEY = 'admin_auth_tokens';
+const ALLOWED_USERS_KEY = 'allowed_github_users';
 const RATE_LIMIT_MAX = 30; // max requests per minute
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute in ms
 
@@ -32,6 +35,30 @@ const sum = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
 async function readCounts(env) {
   try { return JSON.parse((await env.CLICKS.get(KV_KEY)) || '{}') || {}; }
   catch { return {}; }
+}
+
+async function readConfig(env) {
+  try {
+    const saved = await env.CLICKS.get(CONFIG_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  // Return default config
+  return {
+    name: "Jpx Project",
+    role: "Creator · Builder · AI Enthusiast",
+    bio: "Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
+    taglines: ["🚀 Klik tombol paling atas — AI coding GRATIS!", "Membuat sesuatu yang berguna ✦"],
+    photoAvatar: ["avatar.jpg"],
+    photoBg: ["bg.jpg"],
+    links: [
+      { title: "🚀 AI Coding GRATIS", sub: "Build anything with AI", url: "https://freebuff.com", featured: true, badge: "⭐ Recommended" },
+      { title: "GitHub", sub: "Kode & open-source", url: "https://github.com/jpXproject", icon: "gh" }
+    ],
+    socials: [
+      { icon: "ig", url: "https://instagram.com/jepanx" },
+      { icon: "wa", url: "https://wa.me/6285749409040" }
+    ]
+  };
 }
 
 async function readEvents(env) {
@@ -94,6 +121,108 @@ function detectDevice(userAgent) {
   if (/mobile|android|iphone|ipad|ipod/i.test(ua)) return 'mobile';
   if (/tablet|ipad/i.test(ua)) return 'tablet';
   return 'desktop';
+}
+
+/* ============================================================
+   OAUTH FUNCTIONS
+   ============================================================ */
+
+// Generate a random token
+function generateToken() {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Get allowed GitHub users from KV
+async function getAllowedUsers(env) {
+  try {
+    const users = await env.CLICKS.get(ALLOWED_USERS_KEY);
+    return users ? JSON.parse(users) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Save allowed users to KV
+async function saveAllowedUsers(env, users) {
+  await env.CLICKS.put(ALLOWED_USERS_KEY, JSON.stringify(users));
+}
+
+// Generate auth token
+async function createAuthToken(env, githubUser) {
+  const tokens = await readAuthTokens(env);
+  const token = generateToken();
+  tokens[token] = {
+    user: githubUser.login,
+    name: githubUser.name || githubUser.login,
+    avatar: githubUser.avatar_url,
+    created: Date.now(),
+    expires: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 days
+  };
+  await env.CLICKS.put(AUTH_KEY, JSON.stringify(tokens));
+  return token;
+}
+
+// Read auth tokens
+async function readAuthTokens(env) {
+  try {
+    const tokens = await env.CLICKS.get(AUTH_KEY);
+    return tokens ? JSON.parse(tokens) : {};
+  } catch {
+    return {};
+  }
+}
+
+// Validate auth token
+async function validateAuthToken(env, token) {
+  const tokens = await readAuthTokens(env);
+  const tokenData = tokens[token];
+  if (!tokenData) return null;
+  if (Date.now() > tokenData.expires) {
+    // Token expired, remove it
+    delete tokens[token];
+    await env.CLICKS.put(AUTH_KEY, JSON.stringify(tokens));
+    return null;
+  }
+  return tokenData;
+}
+
+// Exchange GitHub code for user info
+async function exchangeGithubCode(code, env) {
+  const response = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      code
+    })
+  });
+  
+  const data = await response.json();
+  if (!data.access_token) return null;
+  
+  // Get user info
+  const userResponse = await fetch('https://api.github.com/user', {
+    headers: {
+      'Authorization': `token ${data.access_token}`,
+      'User-Agent': 'Jpx-Admin-App'
+    }
+  });
+  
+  return userResponse.json();
+}
+
+// Check if user is allowed
+async function isUserAllowed(env, githubUser) {
+  const allowedUsers = await getAllowedUsers(env);
+  // If no users are configured, allow anyone (first user becomes admin)
+  if (allowedUsers.length === 0) return true;
+  return allowedUsers.includes(githubUser.login);
 }
 
 export default {
@@ -186,6 +315,182 @@ export default {
       await env.CLICKS.put(KV_KEY, JSON.stringify({}));
       await env.CLICKS.put(EVENTS_KEY, JSON.stringify([]));
       return json({ ok: true, total: 0 });
+    }
+
+    // --- CONFIG API ---
+
+    // GET /api/config — public config untuk halaman utama
+    if (request.method === 'GET' && url.pathname === '/api/config') {
+      const config = await readConfig(env);
+      return json({ config });
+    }
+
+    // PUT /api/config — update config (butuh auth via DASH_SECRET atau OAuth token)
+    if (request.method === 'PUT' && url.pathname === '/api/config') {
+      // Check for OAuth token first
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      
+      let isAuthenticated = false;
+      
+      // Check if it's a valid OAuth token
+      if (token && token.length > 32) {
+        const tokenData = await validateAuthToken(env, token);
+        if (tokenData) isAuthenticated = true;
+      }
+      
+      // Check if it's DASH_SECRET
+      if (!isAuthenticated && authorized(request, env)) {
+        isAuthenticated = true;
+      }
+      
+      if (!isAuthenticated) return json({ error: 'unauthorized' }, 401);
+      
+      try {
+        const newConfig = await request.json();
+        await env.CLICKS.put(CONFIG_KEY, JSON.stringify(newConfig));
+        return json({ ok: true, config: newConfig });
+      } catch (e) {
+        return json({ error: 'invalid_json' }, 400);
+      }
+    }
+
+    // --- AUTH API ---
+
+    // GET /api/auth/github — redirect ke GitHub OAuth
+    if (request.method === 'GET' && url.pathname === '/api/auth/github') {
+      const state = generateToken(); // CSRF protection
+      const redirectUri = url.searchParams.get('redirect_uri') || `${url.origin}/admin.html`;
+      
+      // Store state in KV for verification
+      await env.CLICKS.put(`oauth_state_${state}`, JSON.stringify({
+        created: Date.now(),
+        redirectUri
+      }), { expirationTtl: 300 }); // 5 minutes expiry
+      
+      const githubUrl = new URL('https://github.com/login/oauth/authorize');
+      githubUrl.searchParams.set('client_id', env.GITHUB_CLIENT_ID || '');
+      githubUrl.searchParams.set('redirect_uri', `${url.origin}/api/auth/github/callback`);
+      githubUrl.searchParams.set('scope', 'read:user');
+      githubUrl.searchParams.set('state', state);
+      
+      return Response.redirect(githubUrl.toString(), 302);
+    }
+
+    // GET /api/auth/github/callback — handle GitHub OAuth callback
+    if (request.method === 'GET' && url.pathname === '/api/auth/github/callback') {
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state');
+      
+      if (!code || !state) {
+        return new Response('Missing code or state parameter', { status: 400 });
+      }
+      
+      // Verify state (CSRF protection)
+      const stateData = await env.CLICKS.get(`oauth_state_${state}`);
+      if (!stateData) {
+        return new Response('Invalid or expired state parameter', { status: 400 });
+      }
+      
+      // Clean up state
+      await env.CLICKS.delete(`oauth_state_${state}`);
+      
+      // Exchange code for user info
+      const githubUser = await exchangeGithubCode(code, env);
+      if (!githubUser || githubUser.message) {
+        return new Response('Failed to authenticate with GitHub', { status: 400 });
+      }
+      
+      // Check if user is allowed
+      const allowed = await isUserAllowed(env, githubUser);
+      if (!allowed) {
+        return new Response(`User ${githubUser.login} is not authorized to access admin panel.`, { status: 403 });
+      }
+      
+      // Create auth token
+      const token = await createAuthToken(env, githubUser);
+      
+      // Parse state data for redirect URI
+      const stateInfo = JSON.parse(stateData);
+      
+      // Redirect back to admin with token
+      const redirectUrl = new URL(stateInfo.redirectUri || `${url.origin}/admin.html`);
+      redirectUrl.searchParams.set('token', token);
+      redirectUrl.searchParams.set('user', githubUser.login);
+      redirectUrl.searchParams.set('name', githubUser.name || githubUser.login);
+      redirectUrl.searchParams.set('avatar', githubUser.avatar_url);
+      
+      return Response.redirect(redirectUrl.toString(), 302);
+    }
+
+    // POST /api/auth/validate — validate token
+    if (request.method === 'POST' && url.pathname === '/api/auth/validate') {
+      try {
+        const { token } = await request.json();
+        const tokenData = await validateAuthToken(env, token);
+        if (!tokenData) {
+          return json({ valid: false, error: 'Invalid or expired token' }, 401);
+        }
+        return json({ valid: true, user: tokenData });
+      } catch {
+        return json({ error: 'Invalid request' }, 400);
+      }
+    }
+
+    // POST /api/auth/logout — logout (remove token)
+    if (request.method === 'POST' && url.pathname === '/api/auth/logout') {
+      try {
+        const { token } = await request.json();
+        const tokens = await readAuthTokens(env);
+        if (tokens[token]) {
+          delete tokens[token];
+          await env.CLICKS.put(AUTH_KEY, JSON.stringify(tokens));
+        }
+        return json({ ok: true });
+      } catch {
+        return json({ error: 'Invalid request' }, 400);
+      }
+    }
+
+    // GET /api/auth/users — get allowed users (admin only)
+    if (request.method === 'GET' && url.pathname === '/api/auth/users') {
+      if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      const users = await getAllowedUsers(env);
+      return json({ users });
+    }
+
+    // POST /api/auth/users — add allowed user (admin only)
+    if (request.method === 'POST' && url.pathname === '/api/auth/users') {
+      if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      try {
+        const { username } = await request.json();
+        if (!username) return json({ error: 'Username required' }, 400);
+        
+        const users = await getAllowedUsers(env);
+        if (!users.includes(username)) {
+          users.push(username);
+          await saveAllowedUsers(env, users);
+        }
+        return json({ ok: true, users });
+      } catch {
+        return json({ error: 'Invalid request' }, 400);
+      }
+    }
+
+    // DELETE /api/auth/users — remove allowed user (admin only)
+    if (request.method === 'DELETE' && url.pathname === '/api/auth/users') {
+      if (!authorized(request, env)) return json({ error: 'unauthorized' }, 401);
+      try {
+        const { username } = await request.json();
+        if (!username) return json({ error: 'Username required' }, 400);
+        
+        let users = await getAllowedUsers(env);
+        users = users.filter(u => u !== username);
+        await saveAllowedUsers(env, users);
+        return json({ ok: true, users });
+      } catch {
+        return json({ error: 'Invalid request' }, 400);
+      }
     }
 
     return json({ ok: true, service: 'jpx-click-counter' });

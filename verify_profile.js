@@ -3,7 +3,7 @@ const puppeteer = require('C:/Users/XCODE/jpXMotionStudios/backend/node_modules/
 const fs = require('fs');
 
 (async () => {
-  const url = 'file:///C:/Users/XCODE/myPage/index.html';
+  const url = 'file:///C:/Users/XCODE/myPage/dist/index.html';
   const userDataDir = 'C:/Users/XCODE/myPage/.chromeprofile';
   if (fs.existsSync(userDataDir)) fs.rmSync(userDataDir, { recursive: true, force: true });
 

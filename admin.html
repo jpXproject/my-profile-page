@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jpx Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN SYSTEM - Jpx Admin Dark Red Theme
+   ============================================================ */
+:root{
+  --bg:#08090d;
+  --panel:#191c24;
+  --panel-2:#151820;
+  --panel-3:#101218;
+  --line:#292d37;
+  --text:#f5f5f7;
+  --muted:#737c96;
+  --red:#ff2028;
+  --red-dark:#b51219;
+  --red-soft:rgba(255,32,40,.12);
+  --black:#050507;
+  --green:#27d17f;
+  --green-soft:rgba(39,209,127,.12);
+  --yellow:#fbbf24;
+  --yellow-soft:rgba(251,191,36,.12);
+  --blue:#3b82f6;
+  --blue-soft:rgba(59,130,246,.12);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:'Inter',Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app{display:flex;min-height:100vh;background:var(--bg)}
+
+/* SIDEBAR */
+.sidebar{
+  width:248px;position:fixed;left:0;top:0;bottom:0;
+  background:#11131a;border-right:1px solid #20232c;z-index:100;
+  display:flex;flex-direction:column;transition:width .2s,transform .2s
+}
+.sidebar.collapsed{width:72px}
+.sidebar.collapsed .brand span,.sidebar.collapsed .user-info div:not(.avatar),
+.sidebar.collapsed .nav-text,.sidebar.collapsed .nav-title,.sidebar.collapsed .chev,
+.sidebar.collapsed .sidebar-bottom-text{display:none}
+.sidebar.collapsed .user{justify-content:center;padding:14px 0}
+.sidebar.collapsed .nav{padding:10px 8px}
+.sidebar.collapsed .nav a{justify-content:center;padding:0}
+
+.brand{height:68px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid #20232c}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:var(--red);display:grid;place-items:center;color:#fff;font-weight:900;margin-right:10px;box-shadow:0 0 24px rgba(255,32,40,.25);flex-shrink:0}
+.brand span{font-size:21px;font-weight:800;letter-spacing:-.5px;white-space:nowrap}
+.brand em{font-style:normal;color:var(--red)}
+
+.user{padding:18px 22px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #20232c}
+.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(145deg,#606979,#1b1e27);border:2px solid #323744;display:grid;place-items:center;font-weight:700;position:relative;flex-shrink:0}
+.avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.avatar:after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;right:-1px;bottom:1px;background:var(--green);border:2px solid #11131a}
+.user strong{display:block;font-size:14px}.user small{color:var(--muted);font-size:13px}
+
+.nav{padding:14px 10px;overflow-y:auto;overflow-x:hidden;flex:1}
+.nav-title{padding:12px 13px 8px;color:#50586d;font-size:10px;text-transform:uppercase;letter-spacing:1.4px;font-weight:800}
+.nav a{
+  color:#75809b;display:flex;align-items:center;gap:12px;
+  height:48px;padding:0 13px;border-radius:12px;margin:3px 0;font-size:14px;
+  transition:.18s;white-space:nowrap
+}
+.nav a:hover{background:#191c24;color:#fff}
+.nav a.active{background:#050507;color:#fff;box-shadow:inset 3px 0 0 var(--red)}
+.icon{width:27px;height:27px;border-radius:9px;background:#050507;display:grid;place-items:center;font-size:14px;color:#7e879f;flex-shrink:0}
+.active .icon{color:var(--red)}
+.chev{margin-left:auto;color:#4e5669;font-size:12px}
+
+.sidebar-bottom{margin-top:auto;padding:14px;border-top:1px solid #20232c}
+.logout{width:100%;height:42px;border:1px solid #2b2f39;background:#0b0c10;color:#8992a8;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+.logout:hover{background:#1a1c24;color:#fff;border-color:#3b3f49}
+
+/* MAIN CONTENT */
+.main{margin-left:248px;width:calc(100% - 248px);min-width:0;transition:margin .2s,width .2s}
+.sidebar.collapsed ~ .main{margin-left:72px;width:calc(100% - 72px)}
+
+/* TOPBAR */
+.topbar{
+  height:68px;background:#171a22;border-bottom:1px solid #262a34;
+  display:flex;align-items:center;padding:0 24px;gap:18px;position:sticky;top:0;z-index:50
+}
+.menu-btn{width:40px;height:40px;border-radius:50%;border:0;background:#050507;color:var(--red);font-size:19px;display:grid;place-items:center;transition:.2s}
+.menu-btn:hover{background:#191c24}
+.search-box{position:relative;flex:1;max-width:360px}
+.search{width:100%;height:38px;background:#050507;border:1px solid #090a0e;border-radius:7px;color:#ddd;padding:0 14px 0 36px;outline:none;transition:.2s}
+.search:focus{border-color:#4a4e58;box-shadow:0 0 0 3px rgba(255,32,40,.06)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#5a6072;font-size:14px}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.top-action{height:38px;padding:0 12px;border:0;background:transparent;color:#7e879f;border-radius:8px;display:flex;align-items:center;gap:6px;font-size:13px;transition:.2s}
+.top-action:hover{background:#20232b;color:#fff}
+.top-avatar{width:36px;height:36px;border-radius:50%;background:#4c5565;display:grid;place-items:center;font-size:12px;border:1px solid #687082;overflow:hidden;flex-shrink:0}
+.top-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* CONTENT */
+.content{padding:clamp(16px,2vw,24px);max-width:1600px;margin:0 auto}
+
+/* PAGE HEADER */
+.page-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.page-head h1{margin:0;font-size:clamp(20px,2.5vw,25px);letter-spacing:-.6px}
+.page-head p{margin:6px 0 0;color:var(--muted);font-size:13px}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid #252933;border-radius:12px;overflow:hidden}
+.stat{padding:clamp(14px,2vw,18px) clamp(16px,2vw,20px);display:flex;align-items:center;gap:15px}
+.stat-icon{width:54px;height:54px;display:grid;place-items:center;font-size:24px;border-radius:8px;flex-shrink:0}
+.stat-icon.red{background:var(--red-soft);color:var(--red)}
+.stat-icon.green{background:var(--green-soft);color:var(--green)}
+.stat-icon.blue{background:var(--blue-soft);color:var(--blue)}
+.stat-icon.yellow{background:var(--yellow-soft);color:var(--yellow)}
+.stat-label{font-size:13px;color:#7f88a0;margin-bottom:4px}
+.stat-value{font-size:clamp(18px,2vw,22px);font-weight:800}
+.stat-change{font-size:11px;margin-top:4px}
+.stat-change.up{color:var(--green)}
+.stat-change.down{color:var(--red)}
+
+/* GRID LAYOUTS */
+.grid-2{display:grid;grid-template-columns:1.08fr .92fr;gap:20px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-bottom:20px}
+
+/* PANEL */
+.panel{padding:clamp(16px,2vw,22px)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.panel-head h2{font-size:15px;margin:0}
+.panel-head a{color:var(--red);text-decoration:none;font-size:13px;transition:.2s}
+.panel-head a:hover{text-decoration:underline}
+
+/* CHART */
+.chart{height:clamp(180px,20vw,235px);position:relative;padding:10px 5px 25px 35px}
+.y-lines{position:absolute;left:35px;right:5px;top:10px;bottom:25px;display:flex;flex-direction:column;justify-content:space-between}
+.y-lines i{display:block;border-top:1px solid #0b0c10}
+.bars{height:calc(100% - 35px);position:absolute;left:45px;right:5px;bottom:25px;display:flex;align-items:end;justify-content:space-around;gap:8px}
+.group{height:100%;display:flex;align-items:end;gap:4px;flex:1;max-width:70px}
+.bar{width:50%;background:var(--red);opacity:.78;min-height:8px;border-radius:2px 2px 0 0;transition:opacity .2s}
+.bar:hover{opacity:1}
+.bar.dark{background:#8f1a20;opacity:.62}
+.labels{position:absolute;left:45px;right:5px;bottom:0;display:flex;justify-content:space-around;color:#667088;font-size:10px}
+.legend{display:flex;gap:16px;font-size:11px;color:#737c92}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;background:var(--red);display:inline-block;border-radius:2px}
+.dot.dark{background:#8f1a20}
+
+/* LINE CHART */
+.line-chart{height:clamp(180px,20vw,235px);position:relative}
+.line-chart svg{width:100%;height:100%}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:14px clamp(12px,1.5vw,18px);border-bottom:1px solid #252933;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#646d82;background:#151820;position:sticky;top:0}
+td{color:#b7bdcb}
+.status{font-size:10px;padding:5px 8px;border-radius:20px;font-weight:600}
+.status.active{background:rgba(39,209,127,.1);color:var(--green)}
+.action{border:0;background:#242832;color:#aab1c0;border-radius:6px;padding:7px 10px;transition:.2s}
+.action:hover{background:#2f3340;color:#fff}
+
+/* FORMS */
+.form-section{display:none;padding:clamp(16px,2vw,24px)}
+.form-section.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.form-group{margin-bottom:clamp(16px,2vw,20px)}
+.form-group label{display:block;margin-bottom:8px;font-weight:500;color:var(--muted);font-size:13px}
+.form-group input,.form-group textarea,.form-group select{
+  width:100%;padding:12px 16px;background:#050507;border:1px solid #252933;border-radius:8px;color:var(--text);font-size:14px;transition:.2s
+}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{
+  outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(255,32,40,.1)
+}
+.form-group textarea{min-height:100px;resize:vertical}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:clamp(12px,2vw,20px)}
+
+/* BUTTONS */
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--red);color:#fff}
+.btn-primary:hover{background:#e61d24;transform:translateY(-1px)}
+.btn-secondary{background:#1a1c24;color:var(--text);border:1px solid #2b2f39}
+.btn-secondary:hover{background:#242832;border-color:#3b3f49}
+.btn-danger{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-sm{padding:6px 12px;font-size:12px}
+
+/* LINKS LIST */
+.links-list{display:flex;flex-direction:column;gap:12px}
+.link-item{
+  display:flex;align-items:center;gap:12px;padding:16px;
+  background:#0d0e12;border:1px solid #1e2128;border-radius:10px;transition:.2s
+}
+.link-item:hover{border-color:#2b2f39;background:#11131a}
+.link-item .drag-handle{color:#4e5669;cursor:grab;font-size:18px}
+.link-item .link-info{flex:1;min-width:0}
+.link-item .link-title{font-weight:600;margin-bottom:4px;font-size:14px}
+.link-item .link-url{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-item .link-actions{display:flex;gap:8px}
+.btn-icon{
+  width:36px;height:36px;display:grid;place-items:center;
+  background:#1a1c24;border:1px solid #252933;border-radius:8px;
+  color:#aab1c0;transition:.2s;font-size:14px
+}
+.btn-icon:hover{background:var(--red);border-color:var(--red);color:#fff}
+.btn-icon.danger:hover{background:#ef4444;border-color:#ef4444}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.modal.active{display:flex}
+.modal-content{
+  background:#191c24;border:1px solid #252933;border-radius:16px;
+  padding:clamp(20px,3vw,30px);width:90%;max-width:500px;
+  animation:modalIn .2s ease;max-height:90vh;overflow-y:auto
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h3{margin:0;font-size:18px}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;padding:4px;transition:.2s}
+.modal-close:hover{color:#fff}
+
+/* SAVE STATUS */
+.save-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:150;transition:.3s;opacity:0;pointer-events:none}
+.save-status.show{opacity:1}
+.save-status.saving{background:var(--yellow-soft);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+.save-status.saved{background:var(--green-soft);color:var(--green);border:1px solid rgba(39,209,127,.3)}
+.save-status.error{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;right:24px;padding:14px 20px;
+  background:var(--green);color:#fff;border-radius:10px;font-weight:500;
+  box-shadow:0 10px 30px rgba(39,209,127,.3);
+  transform:translateY(100px);opacity:0;transition:.3s;z-index:160
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:#ef4444;box-shadow:0 10px 30px rgba(239,68,68,.3)}
+.toast.info{background:var(--blue);box-shadow:0 10px 30px rgba(59,130,246,.3)}
+
+/* LOGIN SCREEN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{
+  background:#11131a;border:1px solid #20232c;border-radius:16px;
+  padding:40px;width:100%;max-width:400px;text-align:center
+}
+.login-card h1{margin-bottom:8px;font-size:24px}
+.login-card h1 em{font-style:normal;color:var(--red)}
+.login-card p{color:var(--muted);margin-bottom:30px;font-size:14px}
+.login-card .btn{width:100%;padding:14px;margin-bottom:12px;justify-content:center}
+.divider{display:flex;align-items:center;margin:20px 0;color:var(--muted);font-size:13px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#252933}
+.divider span{padding:0 15px}
+
+/* SKELETON LOADING */
+.skeleton{background:linear-gradient(90deg,#1a1c24 25%,#252933 50%,#1a1c24 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* OVERLAY (MOBILE SIDEBAR) */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none}
+.overlay.active{display:block}
+
+/* RESPONSIVE */
+@media(max-width:1200px){
+  .grid-2{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:248px}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar.collapsed{width:72px;transform:translateX(0)}
+  .main{margin-left:0;width:100%}
+  .sidebar.collapsed ~ .main{margin-left:72px;width:calc(100% - 72px)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .topbar{padding:0 16px}
+  .search-box{max-width:200px}
+}
+@media(max-width:520px){
+  .stats{grid-template-columns:1fr}
+  .page-head{flex-direction:column;align-items:flex-start}
+  .search-box{display:none}
+  .top-actions{gap:6px}
+  .top-action span:not(.top-avatar){display:none}
+  .form-row{grid-template-columns:1fr}
+}
+
+/* MOBILE TABLE CARD */
+@media(max-width:768px){
+  table{font-size:12px}
+  th,td{padding:10px 12px}
+}
+
+/* HIDDEN UTILITY */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-mark">J</div>
+    <span>Jpx <em>Admin</em></span>
+  </div>
+  <div class="user">
+    <div class="avatar" id="sidebarAvatar">JP</div>
+    <div>
+      <strong id="sidebarUserName">jpXCode</strong>
+      <small>Administrator</small>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-title">Main Menu</div>
+    <a class="active" href="#" data-page="dashboard"><div class="icon">◉</div><span class="nav-text">Dashboard</span></a>
+    <a href="#" data-page="profile"><div class="icon">⌘</div><span class="nav-text">Profil</span></a>
+    <a href="#" data-page="links"><div class="icon">↗</div><span class="nav-text">Links</span></a>
+    <a href="#" data-page="social"><div class="icon">◎</div><span class="nav-text">Social Media</span></a>
+    <a href="#" data-page="appearance"><div class="icon">▦</div><span class="nav-text">Tampilan</span></a>
+    <a href="#" data-page="analytics"><div class="icon">▤</div><span class="nav-text">Analytics</span></a>
+    <div class="nav-title">System</div>
+    <a href="#" data-page="settings"><div class="icon">⚙</div><span class="nav-text">Pengaturan</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="logout" onclick="logout()">↪ <span class="sidebar-bottom-text">&nbsp; Logout</span></button>
+  </div>
+</aside>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<main class="main">
+<!-- TOPBAR -->
+<header class="topbar">
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input class="search" placeholder="Search...">
+  </div>
+  <div class="top-actions">
+    <button class="top-action" onclick="previewWebsite()">👁 Preview</button>
+    <div class="top-avatar" id="topAvatar">JP</div>
+  </div>
+</header>
+
+<!-- CONTENT -->
+<section class="content">
+
+<!-- ========== DASHBOARD ========== -->
+<div class="page-section active" id="page-dashboard">
+  <div class="page-head">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Ringkasan aktivitas website dan performa link Anda.</p>
+    </div>
+    <span style="color:var(--muted);font-size:13px" id="currentDate"></span>
+  </div>
+
+  <div class="stats" id="statsContainer">
+    <div class="card stat"><div class="stat-icon red">↗</div><div><div class="stat-label">Today Clicks</div><div class="stat-value" id="statTodayClicks">0</div><div class="stat-change up">Loading...</div></div></div>
+    <div class="card stat"><div class="stat-icon green">▥</div><div><div class="stat-label">Total Clicks</div><div class="stat-value" id="statTotalClicks">0</div><div class="stat-change up">Loading...</div></div></div>
+    <div class="card stat"><div class="stat-icon blue">◒</div><div><div class="stat-label">Active Links</div><div class="stat-value" id="statActiveLinks">0</div><div class="stat-change up">Loading...</div></div></div>
+    <div class="card stat"><div class="stat-icon yellow">◔</div><div><div class="stat-label">Social Links</div><div class="stat-value" id="statSocialLinks">0</div><div class="stat-change up">Loading...</div></div></div>
+  </div>
+
+  <div class="grid-2">
+    <section class="card panel">
+      <div class="panel-head">
+        <h2>Link Clicks</h2>
+        <div class="legend">
+          <span><span class="dot"></span>Links</span>
+          <span><span class="dot dark"></span>Social</span>
+        </div>
+      </div>
+      <div class="chart" id="barChart">
+        <div class="y-lines"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="bars" id="barsContainer"></div>
+        <div class="labels" id="labelsContainer"></div>
+      </div>
+    </section>
+    <section class="card panel">
+      <div class="panel-head"><h2>Clicks Overview</h2></div>
+      <div class="line-chart">
+        <svg viewBox="0 0 600 240" preserveAspectRatio="none">
+          <g stroke="#0b0c10" stroke-width="1">
+            <line x1="35" y1="20" x2="590" y2="20"/><line x1="35" y1="70" x2="590" y2="70"/>
+            <line x1="35" y1="120" x2="590" y2="120"/><line x1="35" y1="170" x2="590" y2="170"/><line x1="35" y1="220" x2="590" y2="220"/>
+          </g>
+          <path d="M35 190 L125 155 L215 168 L305 110 L395 132 L485 80 L590 105 L590 220 L35 220Z" fill="rgba(255,32,40,.28)"/>
+          <polyline points="35,190 125,155 215,168 305,110 395,132 485,80 590,105" fill="none" stroke="#ff2028" stroke-width="3"/>
+          <g fill="#ff2028"><circle cx="35" cy="190" r="4"/><circle cx="125" cy="155" r="4"/><circle cx="215" cy="168" r="4"/><circle cx="305" cy="110" r="4"/><circle cx="395" cy="132" r="4"/><circle cx="485" cy="80" r="4"/><circle cx="590" cy="105" r="4"/></g>
+        </svg>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="panel-head" style="padding:20px 20px 0"><h2>Recent Links Activity</h2></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Link</th><th>Category</th><th>Clicks</th><th>Status</th></tr></thead>
+      <tbody id="recentActivityBody"></tbody></table>
+    </div>
+  </section>
+</div>
+
+<!-- ========== PROFILE ========== -->
+<div class="page-section" id="page-profile" style="display:none">
+  <div class="page-head">
+    <div><h1>Profil</h1><p>Kelola informasi profil website Anda.</p></div>
+  </div>
+  <div class="card panel">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nama</label>
+        <input type="text" id="configName" placeholder="Jpx Project" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>Peran / Role</label>
+        <input type="text" id="configRole" placeholder="Creator · Builder" data-auto-save>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Bio / Deskripsi</label>
+      <textarea id="configBio" placeholder="Halo! Selamat datang di website saya..." data-auto-save></textarea>
+    </div>
+    <div class="form-group">
+      <label>Tagline (typing effect - pisahkan dengan koma)</label>
+      <input type="text" id="configTaglines" placeholder="🚀 Klik tombol paling atas!, Membuat sesuatu yang berguna ✦" data-auto-save>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Avatar (URL atau nama file)</label>
+        <input type="text" id="configAvatar" placeholder="avatar.jpg" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>Background (URL atau nama file)</label>
+        <input type="text" id="configBg" placeholder="bg.jpg" data-auto-save>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LINKS ========== -->
+<div class="page-section" id="page-links" style="display:none">
+  <div class="page-head">
+    <div><h1>Links</h1><p>Kelola daftar link di website Anda.</p></div>
+    <button class="btn btn-primary" onclick="openAddLinkModal()">+ Tambah Link</button>
+  </div>
+  <div class="card panel">
+    <div class="links-list" id="linksList"></div>
+  </div>
+</div>
+
+<!-- ========== SOCIAL ========== -->
+<div class="page-section" id="page-social" style="display:none">
+  <div class="page-head">
+    <div><h1>Social Media</h1><p>Kelola link sosial media Anda.</p></div>
+    <button class="btn btn-primary" onclick="openAddSocialModal()">+ Tambah Social</button>
+  </div>
+  <div class="card panel">
+    <div class="links-list" id="socialList"></div>
+  </div>
+</div>
+
+<!-- ========== APPEARANCE ========== -->
+<div class="page-section" id="page-appearance" style="display:none">
+  <div class="page-head">
+    <div><h1>Tampilan</h1><p>Sesuaikan warna dan tampilan website.</p></div>
+  </div>
+  <div class="card panel">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Warna Utama (Primary)</label>
+        <input type="color" id="configPrimaryColor" value="#8b5cf6" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>Warna Aksen (Accent)</label>
+        <input type="color" id="configAccentColor" value="#22d3ee" data-auto-save>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Warna Background</label>
+        <input type="color" id="configBgColor" value="#05050f" data-auto-save>
+      </div>
+      <div class="form-group">
+        <label>Warna Teks</label>
+        <input type="color" id="configTextColor" value="#f2f2ff" data-auto-save>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ANALYTICS ========== -->
+<div class="page-section" id="page-analytics" style="display:none">
+  <div class="page-head">
+    <div><h1>Analytics</h1><p>Statistik detail klik dan kunjungan.</p></div>
+  </div>
+  <div class="card panel">
+    <div class="panel-head"><h2>Daily Click History</h2></div>
+    <div class="chart" id="analyticsChart">
+      <div class="y-lines"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="bars" id="analyticsBars"></div>
+      <div class="labels" id="analyticsLabels"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SETTINGS ========== -->
+<div class="page-section" id="page-settings" style="display:none">
+  <div class="page-head">
+    <div><h1>Pengaturan</h1><p>Konfigurasi sistem dan integrasi.</p></div>
+  </div>
+  <div class="card panel">
+    <div class="form-group">
+      <label>API URL (Cloudflare Worker)</label>
+      <input type="text" id="configApiUrl" placeholder="https://jpx-click-counter.panx-je.workers.dev" data-auto-save>
+    </div>
+    <div class="form-group">
+      <label>URL Website</label>
+      <input type="text" id="configSiteUrl" placeholder="https://jpxcode.pages.dev" data-auto-save>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="saveConfigToServer()">💾 Simpan ke Server</button>
+      <button class="btn btn-secondary" onclick="loadConfig()">🔄 Muat Ulang</button>
+      <button class="btn btn-secondary" onclick="previewWebsite()">👁 Preview Website</button>
+      <button class="btn btn-danger" onclick="resetConfig()">🗑 Reset Default</button>
+    </div>
+  </div>
+</div>
+
+</section>
+</main>
+</div>
+
+<!-- MODAL: Add/Edit Link -->
+<div class="modal" id="linkModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="linkModalTitle">Tambah Link</h3>
+      <button class="modal-close" onclick="closeLinkModal()">&times;</button>
+    </div>
+    <input type="hidden" id="editLinkIndex">
+    <div class="form-group"><label>Judul Link</label><input type="text" id="linkTitle" placeholder="🚀 AI Coding GRATIS"></div>
+    <div class="form-group"><label>Sub Judul</label><input type="text" id="linkSubtitle" placeholder="Build anything with AI"></div>
+    <div class="form-group"><label>URL</label><input type="url" id="linkUrl" placeholder="https://example.com"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ikon</label>
+        <select id="linkIcon">
+          <option value="">Tidak ada</option>
+          <option value="gh">GitHub</option>
+          <option value="threads">Threads</option>
+          <option value="ig">Instagram</option>
+          <option value="x">X (Twitter)</option>
+          <option value="tt">TikTok</option>
+          <option value="wa">WhatsApp</option>
+          <option value="yt">YouTube</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Opsi</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--text)">
+          <input type="checkbox" id="linkFeatured"> Featured (Tombol Utama)
+        </label>
+      </div>
+    </div>
+    <div class="form-group"><label>Badge (opsional)</label><input type="text" id="linkBadge" placeholder="⭐ Recommended"></div>
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button class="btn btn-primary" onclick="saveLink()">Simpan</button>
+      <button class="btn btn-secondary" onclick="closeLinkModal()">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Social -->
+<div class="modal" id="socialModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="socialModalTitle">Tambah Social</h3>
+      <button class="modal-close" onclick="closeSocialModal()">&times;</button>
+    </div>
+    <input type="hidden" id="editSocialIndex">
+    <div class="form-group">
+      <label>Platform</label>
+      <select id="socialIcon">
+        <option value="ig">Instagram</option>
+        <option value="wa">WhatsApp</option>
+        <option value="yt">YouTube</option>
+        <option value="x">X (Twitter)</option>
+        <option value="tt">TikTok</option>
+        <option value="gh">GitHub</option>
+        <option value="threads">Threads</option>
+      </select>
+    </div>
+    <div class="form-group"><label>URL Profil</label><input type="url" id="socialUrl" placeholder="https://instagram.com/username"></div>
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button class="btn btn-primary" onclick="saveSocial()">Simpan</button>
+      <button class="btn btn-secondary" onclick="closeSocialModal()">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE STATUS -->
+<div class="save-status" id="saveStatus"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIG STATE
+   ============================================================ */
+const API_BASE = 'https://jpx-click-counter.panx-je.workers.dev';
+let config = {
+  name:"Jpx Project",role:"Creator · Builder · AI Enthusiast",
+  bio:"Halo! Selamat datang di Jpx Project — semua link penting ada di bawah.",
+  taglines:["🚀 Klik tombol paling atas — AI coding GRATIS!","Membuat sesuatu yang berguna ✦"],
+  photoAvatar:["avatar.jpg"],photoBg:["bg.jpg"],clicksApi:API_BASE,
+  links:[
+    {title:"🚀 AI Coding GRATIS — Coba Sekarang!",sub:"Build anything with AI · Free · No card needed",url:"https://freebuff.com/?ref=ref-7a6360b8-b763-4d64-b02f-10f39e8d9724",featured:true,badge:"⭐ Recommended"},
+    {title:"GitHub",sub:"Kode & open-source project",url:"https://github.com/jpXproject",icon:"gh"},
+    {title:"Threads",sub:"Pikiran & update harian",url:"https://threads.com/jepanx",icon:"threads"},
+    {title:"TikTok",sub:"Konten & video harian 🎵",url:"https://tiktok.com/@oneal___",icon:"tt"}
+  ],
+  socials:[
+    {icon:"ig",url:"https://instagram.com/jepanx"},
+    {icon:"wa",url:"https://wa.me/6285749409040"},
+    {icon:"yt",url:"https://www.youtube.com/jpxproject"}
+  ],
+  colors:{primary:"#8b5cf6",accent:"#22d3ee",background:"#05050f",text:"#f2f2ff"}
+};
+let authToken=null,currentUser=null,saveTimeout=null,hasUnsavedChanges=false;
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function loginWithGitHub(){
+  window.location.href=`${API_BASE}/api/auth/github?redirect_uri=${encodeURIComponent(window.location.href.split('?')[0])}`;
+}
+function loginWithPassword(){
+  const pw=document.getElementById('passwordInput')?.value;
+  if(!pw){showToast('Masukkan password','error');return}
+  if(pw==='jpxadmin'){authToken=pw;showAdminPanel();showToast('Login berhasil!','success')}
+  else showToast('Password salah','error');
+}
+async function logout(){
+  if(authToken){try{await fetch(`${API_BASE}/api/auth/logout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:authToken})})}catch(e){}}
+  authToken=null;currentUser=null;localStorage.removeItem('adminToken');localStorage.removeItem('adminUser');
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('adminPanel').style.display='none';
+  showToast('Logout berhasil','success');
+}
+function showAdminPanel(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('adminPanel').style.display='flex';
+  if(currentUser){
+    const n=currentUser.name||currentUser.user||'Admin';
+    document.getElementById('sidebarUserName').textContent=n;
+    document.getElementById('topAvatar').textContent=n.charAt(0).toUpperCase();
+    if(currentUser.avatar){document.getElementById('sidebarAvatar').innerHTML=`<img src="${currentUser.avatar}">`}
+  }
+  loadConfig();
+  loadStats();
+}
+
+/* ============================================================
+   CONFIG LOAD/SAVE
+   ============================================================ */
+async function loadConfig(){
+  showSaveStatus('loading');
+  try{
+    const r=await fetch(`${API_BASE}/api/config`);
+    if(r.ok){const d=await r.json();if(d.config){config={...config,...d.config};showSaveStatus('loaded')}}
+  }catch(e){}
+  populateForms();renderLinks();renderSocials();
+}
+function populateForms(){
+  const g=id=>document.getElementById(id);
+  g('configName').value=config.name||'';
+  g('configRole').value=config.role||'';
+  g('configBio').value=config.bio||'';
+  g('configTaglines').value=(config.taglines||[]).join(', ');
+  g('configAvatar').value=(config.photoAvatar||[])[0]||'';
+  g('configBg').value=(config.photoBg||[])[0]||'';
+  g('configApiUrl').value=config.clicksApi||'';
+  if(config.colors){
+    g('configPrimaryColor').value=config.colors.primary||'#8b5cf6';
+    g('configAccentColor').value=config.colors.accent||'#22d3ee';
+    g('configBgColor').value=config.colors.background||'#05050f';
+    g('configTextColor').value=config.colors.text||'#f2f2ff';
+  }
+}
+function collectConfig(){
+  const g=id=>document.getElementById(id);
+  config.name=g('configName').value;
+  config.role=g('configRole').value;
+  config.bio=g('configBio').value;
+  config.taglines=g('configTaglines').value.split(',').map(t=>t.trim()).filter(t=>t);
+  const av=g('configAvatar').value,bg=g('configBg').value;
+  config.photoAvatar=av?[av]:[];config.photoBg=bg?[bg]:[];
+  config.clicksApi=g('configApiUrl').value;
+  config.colors={primary:g('configPrimaryColor').value,accent:g('configAccentColor').value,background:g('configBgColor').value,text:g('configTextColor').value};
+}
+async function saveConfigToServer(){
+  collectConfig();showSaveStatus('saving');
+  try{
+    const h={'Content-Type':'application/json'};
+    if(authToken)h['Authorization']=`Bearer ${authToken}`;
+    const r=await fetch(`${API_BASE}/api/config`,{method:'PUT',headers:h,body:JSON.stringify(config)});
+    if(r.ok){showSaveStatus('saved');showToast('✅ Tersimpan ke server!','success')}
+    else{showSaveStatus('error');showToast('⚠️ Gagal simpan','error')}
+  }catch(e){showSaveStatus('error');showToast('❌ Offline','error')}
+}
+function resetConfig(){if(confirm('Reset ke default?')){localStorage.removeItem('jpxConfig');location.reload()}}
+
+/* ============================================================
+   AUTO-SAVE (DEBOUNCE 800ms)
+   ============================================================ */
+function triggerAutoSave(){
+  if(saveTimeout)clearTimeout(saveTimeout);
+  showSaveStatus('saving');
+  saveTimeout=setTimeout(async()=>{
+    collectConfig();localStorage.setItem('jpxConfig',JSON.stringify(config));
+    try{
+      const h={'Content-Type':'application/json'};
+      if(authToken)h['Authorization']=`Bearer ${authToken}`;
+      await fetch(`${API_BASE}/api/config`,{method:'PUT',headers:h,body:JSON.stringify(config)});
+      showSaveStatus('saved');
+    }catch(e){showSaveStatus('error')}
+  },800);
+}
+document.querySelectorAll('[data-auto-save]').forEach(el=>{
+  el.addEventListener('input',()=>{hasUnsavedChanges=true;triggerAutoSave()});
+});
+window.addEventListener('beforeunload',e=>{if(hasUnsavedChanges){e.preventDefault();e.returnValue=''}});
+
+/* ============================================================
+   SAVE STATUS
+   ============================================================ */
+function showSaveStatus(state){
+  const el=document.getElementById('saveStatus');
+  el.className='save-status show '+state;
+  if(state==='saving')el.innerHTML='● Saving...';
+  else if(state==='saved')el.innerHTML='✓ Saved just now';
+  else if(state==='error')el.innerHTML='⚠ Failed to save';
+  else if(state==='loaded')el.innerHTML='✓ Loaded from server';
+  else if(state==='loading')el.innerHTML='● Loading...';
+  else{el.classList.remove('show');return}
+  if(state!=='saving')setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+/* ============================================================
+   STATS
+   ============================================================ */
+async function loadStats(){
+  try{
+    const r=await fetch(`${API_BASE}/api/clicks`);
+    if(r.ok){
+      const d=await r.json();
+      const total=Object.values(d.counts||{}).reduce((a,b)=>a+b,0);
+      document.getElementById('statTotalClicks').textContent=total.toLocaleString();
+      document.getElementById('statActiveLinks').textContent=config.links?.length||0;
+      document.getElementById('statSocialLinks').textContent=config.socials?.length||0;
+      document.getElementById('statTodayClicks').textContent=Math.floor(total*0.12).toLocaleString();
+      renderBarChart(d.counts||{});
+      renderRecentActivity(d.counts||{});
+    }
+  }catch(e){}
+}
+function renderBarChart(counts){
+  const entries=Object.entries(counts).slice(-7);
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  const bars=document.getElementById('barsContainer');
+  const labels=document.getElementById('labelsContainer');
+  bars.innerHTML='';labels.innerHTML='';
+  entries.forEach(([url,count])=>{
+    const h=Math.round((count/max)*100);
+    const group=document.createElement('div');group.className='group';
+    group.innerHTML=`<i class="bar" style="height:${h}%"></i><i class="bar dark" style="height:${Math.round(h*0.6)}%"></i>`;
+    bars.appendChild(group);
+    const short=url.replace(/^https?:\/\//,'').split('/')[0].slice(0,8);
+    labels.innerHTML+=`<span>${short}</span>`;
+  });
+}
+function renderRecentActivity(counts){
+  const tbody=document.getElementById('recentActivityBody');
+  tbody.innerHTML='';
+  const links=[...(config.links||[]),...(config.socials||[]).map(s=>({title:s.icon.toUpperCase(),url:s.url,icon:s.icon}))];
+  links.slice(0,8).forEach(link=>{
+    const clicks=counts[link.url]||0;
+    tbody.innerHTML+=`<tr><td>${link.title}</td><td>${link.featured?'Featured':'Regular'}</td><td>${clicks.toLocaleString()}</td><td><span class="status active">Active</span></td></tr>`;
+  });
+}
+
+/* ============================================================
+   LINKS CRUD
+   ============================================================ */
+function renderLinks(){
+  const list=document.getElementById('linksList');list.innerHTML='';
+  (config.links||[]).forEach((l,i)=>{
+    list.innerHTML+=`<div class="link-item">
+      <span class="drag-handle">⋮⋮</span>
+      <div class="link-info"><div class="link-title">${l.title} ${l.featured?'⭐':''}</div><div class="link-url">${l.url}</div></div>
+      <div class="link-actions">
+        <button class="btn-icon" onclick="editLink(${i})" title="Edit">✏️</button>
+        <button class="btn-icon" onclick="deleteLink(${i})" title="Hapus">🗑️</button>
+      </div>
+    </div>`;
+  });
+}
+function openAddLinkModal(){
+  document.getElementById('linkModalTitle').textContent='Tambah Link';
+  document.getElementById('editLinkIndex').value='';
+  ['linkTitle','linkSubtitle','linkUrl','linkBadge'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('linkIcon').value='';
+  document.getElementById('linkFeatured').checked=false;
+  document.getElementById('linkModal').classList.add('active');
+}
+function editLink(i){
+  const l=config.links[i];
+  document.getElementById('linkModalTitle').textContent='Edit Link';
+  document.getElementById('editLinkIndex').value=i;
+  document.getElementById('linkTitle').value=l.title||'';
+  document.getElementById('linkSubtitle').value=l.sub||'';
+  document.getElementById('linkUrl').value=l.url||'';
+  document.getElementById('linkIcon').value=l.icon||'';
+  document.getElementById('linkFeatured').checked=l.featured||false;
+  document.getElementById('linkBadge').value=l.badge||'';
+  document.getElementById('linkModal').classList.add('active');
+}
+function closeLinkModal(){document.getElementById('linkModal').classList.remove('active')}
+function saveLink(){
+  const i=document.getElementById('editLinkIndex').value;
+  const l={title:document.getElementById('linkTitle').value,sub:document.getElementById('linkSubtitle').value,url:document.getElementById('linkUrl').value};
+  const icon=document.getElementById('linkIcon').value;if(icon)l.icon=icon;
+  if(document.getElementById('linkFeatured').checked)l.featured=true;
+  const badge=document.getElementById('linkBadge').value;if(badge)l.badge=badge;
+  if(i!=='')config.links[i]=l;else config.links.push(l);
+  renderLinks();closeLinkModal();triggerAutoSave();showToast('Link tersimpan!','success');
+}
+function deleteLink(i){if(confirm('Hapus link ini?')){config.links.splice(i,1);renderLinks();triggerAutoSave();showToast('Link dihapus','success')}}
+
+/* ============================================================
+   SOCIAL CRUD
+   ============================================================ */
+function renderSocials(){
+  const list=document.getElementById('socialList');list.innerHTML='';
+  (config.socials||[]).forEach((s,i)=>{
+    list.innerHTML+=`<div class="link-item">
+      <div class="link-info"><div class="link-title">${s.icon.toUpperCase()}</div><div class="link-url">${s.url}</div></div>
+      <div class="link-actions">
+        <button class="btn-icon" onclick="editSocial(${i})" title="Edit">✏️</button>
+        <button class="btn-icon" onclick="deleteSocial(${i})" title="Hapus">🗑️</button>
+      </div>
+    </div>`;
+  });
+}
+function openAddSocialModal(){
+  document.getElementById('socialModalTitle').textContent='Tambah Social';
+  document.getElementById('editSocialIndex').value='';
+  document.getElementById('socialIcon').value='ig';
+  document.getElementById('socialUrl').value='';
+  document.getElementById('socialModal').classList.add('active');
+}
+function editSocial(i){
+  const s=config.socials[i];
+  document.getElementById('socialModalTitle').textContent='Edit Social';
+  document.getElementById('editSocialIndex').value=i;
+  document.getElementById('socialIcon').value=s.icon;
+  document.getElementById('socialUrl').value=s.url;
+  document.getElementById('socialModal').classList.add('active');
+}
+function closeSocialModal(){document.getElementById('socialModal').classList.remove('active')}
+function saveSocial(){
+  const i=document.getElementById('editSocialIndex').value;
+  const s={icon:document.getElementById('socialIcon').value,url:document.getElementById('socialUrl').value};
+  if(i!=='')config.socials[i]=s;else config.socials.push(s);
+  renderSocials();closeSocialModal();triggerAutoSave();showToast('Social tersimpan!','success');
+}
+function deleteSocial(i){if(confirm('Hapus social ini?')){config.socials.splice(i,1);renderSocials();triggerAutoSave();showToast('Social dihapus','success')}}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+document.querySelectorAll('.nav a').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    const page=a.dataset.page;
+    document.querySelectorAll('.page-section').forEach(s=>s.style.display='none');
+    document.getElementById('page-'+page).style.display='block';
+    closeSidebar();
+    if(page==='dashboard')loadStats();
+  });
+});
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('overlay');
+  if(window.innerWidth<=768){
+    sb.classList.toggle('open');
+    ov.classList.toggle('active');
+  }else{
+    sb.classList.toggle('collapsed');
+  }
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+/* ============================================================
+   PREVIEW
+   ============================================================ */
+function previewWebsite(){window.open('https://jpxcode.pages.dev/','_blank')}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded',async()=>{
+  document.getElementById('currentDate').textContent=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+
+  const params=new URLSearchParams(window.location.search);
+  const token=params.get('token'),user=params.get('user'),name=params.get('name'),avatar=params.get('avatar');
+  if(token){
+    authToken=token;currentUser={login:user,name:name,avatar:avatar};
+    localStorage.setItem('adminToken',token);localStorage.setItem('adminUser',JSON.stringify(currentUser));
+    window.history.replaceState({},document.title,window.location.pathname);
+    showAdminPanel();showToast('Login berhasil! '+name,'success');return;
+  }
+  const savedToken=localStorage.getItem('adminToken'),savedUser=localStorage.getItem('adminUser');
+  if(savedToken){
+    try{
+      const r=await fetch(`${API_BASE}/api/auth/validate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:savedToken})});
+      const d=await r.json();
+      if(d.valid){authToken=savedToken;currentUser=d.user;showAdminPanel();showToast('Selamat datang kembali!','success')}
+      else{localStorage.removeItem('adminToken');localStorage.removeItem('adminUser');showToast('Sesi habis','error')}
+    }catch(e){authToken=savedToken;currentUser=savedUser?JSON.parse(savedUser):null;showAdminPanel()}
+  }
+});
+</script>
+</body>
+</html>
